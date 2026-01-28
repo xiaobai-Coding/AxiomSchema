@@ -136,7 +136,7 @@ interface PatchHistoryRecord {
   counts?: { added: number; updated: number; removed: number; validOps: number; skippedOps: number }
 }
 
-const PATCH_HISTORY_KEY = 'ai-schema-builder-patch-history'
+const PATCH_HISTORY_KEY = 'axiom-schema-patch-history'
 const patchHistory = ref<PatchHistoryRecord[]>([])
 const expandedRecordIds = ref<Record<string, boolean>>({})
 

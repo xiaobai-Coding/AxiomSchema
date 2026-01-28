@@ -1,12 +1,14 @@
-# AI Schema Builder (Advanced)
+# AxiomSchema
+### AI-Native Incremental Schema Engine with a Single Source of Truth.
 
+AxiomSchema transforms messy natural language into surgical JSON Patches, keeping your data structure immutable and verified.
 [中文版本入口](#zh-readme)
 
 An engineering-oriented AI-powered JSON Schema form builder that transforms natural language into **production-ready, incremental, and validated schemas**.
 
-AI Schema Builder (Advanced) is **not** a one-shot AI demo. It is a robust **engineering-oriented AI system** designed to demonstrate how to integrate LLMs into real-world front-end workflows with **strict control, multi-layer validation, incremental patching, and cost protection**.
+AxiomSchema is **not** a one-shot AI demo. It is a robust **engineering-oriented AI system** designed to demonstrate how to integrate LLMs into real-world front-end workflows with **strict control, multi-layer validation, incremental patching, and cost protection**.
 
-👉 Live Demo: https://ai-schema-builder-advanced.vercel.app
+👉 Live Demo: https://axiomschema.vercel.app
 
 ---
 
@@ -16,7 +18,7 @@ AI Schema Builder (Advanced) is **not** a one-shot AI demo. It is a robust **eng
 
 In the era of AI-driven development, most "Form Builders" focus on one-shot generation. However, real-world requirements are **iterative**. A user might say "add a phone field" or "make this field required" after the initial generation. 
 
-**AI Schema Builder (Advanced)** solves this by treating AI as a "proposer" of changes (Patches) rather than a simple code generator. It implements a sophisticated workflow that ensures AI-generated modifications are safe, version-aware, and human-verified before being applied to the "Source of Truth" (the Schema).
+**AxiomSchema** solves this by treating AI as a "proposer" of changes (Patches) rather than a simple code generator. It implements a sophisticated workflow that ensures AI-generated modifications are safe, version-aware, and human-verified before being applied to the "Source of Truth" (the Schema).
 
 ### ❓ Why This Project Exists
 
@@ -70,7 +72,7 @@ The system follows a rigorous "Reasoning -> Validation -> Execution" pipeline:
 
 ### 🏗 Engineering Hard Cases
 
-These are real-world failure modes where most AI demos collapse. AI Schema Builder (Advanced) handles them with system-level guards.
+These are real-world failure modes where most AI demos collapse. AxiomSchema handles them with system-level guards.
 
 #### 1) Patch Drift / Version Mismatch (Schema Drift)
 - **Problem**: User edits schema manually while AI is generating a patch.
@@ -143,7 +145,7 @@ pnpm install
 ```bash
 export AI_API_KEY="your_api_key_here"
 export AI_API_BASE_URL="https://api.deepseek.com"
-export CLIENT_TOKEN="ai-schema-builder-web"
+export CLIENT_TOKEN="axiom-schema"
 ```
 
 #### 3) Start local server (Vercel Dev)
@@ -169,7 +171,7 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 
 在 AI 驱动开发的时代，大多数“表单生成器”只关注一次性生成。然而，真实业务需求是**增量演进**的。用户往往在初始生成后提出“加个手机号字段”或“把这个设为必填”等修改。
 
-**AI Schema Builder (Advanced)** 正是为了解决这一痛点而生。它将 AI 视为变更的“提案者”（Patch Proposer），而非简单的代码生成器。通过一套严谨的工作流，确保 AI 生成的修改在应用到“唯一事实源”（Schema）之前，是安全、感知版本且经过人工确认的。
+**AxiomSchema** 正是为了解决这一痛点而生。它将 AI 视为变更的“提案者”（Patch Proposer），而非简单的代码生成器。通过一套严谨的工作流，确保 AI 生成的修改在应用到“唯一事实源”（Schema）之前，是安全、感知版本且经过人工确认的。
 
 ### ❓ 项目背景
 
@@ -296,7 +298,7 @@ pnpm install
 ```bash
 export AI_API_KEY="你的_api_key"
 export AI_API_BASE_URL="https://api.deepseek.com"
-export CLIENT_TOKEN="ai-schema-builder-web"
+export CLIENT_TOKEN="axiom-schema"
 ```
 
 #### 3）启动本地服务 (Vercel Dev)

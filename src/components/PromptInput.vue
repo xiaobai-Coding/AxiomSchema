@@ -110,7 +110,7 @@ defineExpose({
 <template>
   <NCard class="prompt-card" :bordered="true">
     <div class="prompt-header">
-      <h1 class="prompt-title">AI Schema Builder</h1>
+      <h1 class="prompt-title">AxiomSchema</h1>
       <p class="prompt-subtitle">描述需求 → 生成 Schema → 实时预览表单（支持增量 Patch）</p>
     </div>
     
