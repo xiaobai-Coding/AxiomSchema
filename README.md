@@ -8,7 +8,7 @@ An engineering-oriented AI-powered JSON Schema form builder that transforms natu
 
 AxiomSchema is **not** a one-shot AI demo. It is a robust **engineering-oriented AI system** designed to demonstrate how to integrate LLMs into real-world front-end workflows with **strict control, multi-layer validation, incremental patching, and cost protection**.
 
-👉 Live Demo: https://axiomschema.vercel.app
+👉 Live Demo: https://axiom-schema.vercel.app/
 
 ---
 
@@ -182,6 +182,7 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 
 **当用户说“我只想改这一项”时，90% 的 AI Demo 都会崩溃。** 本项目正是为了解决这些工程级问题。
 
+👉在线体验： https://axiom-schema.vercel.app/
 ### 🛠 核心能力
 
 #### 1. 自然语言 → JSON Schema（受控生成）
