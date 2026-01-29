@@ -30,15 +30,15 @@ export interface PatchModelOutput {
 }
 
 const REASON_MAP: Record<string, string> = {
-  'invalid_operations_array': 'operations 结构不合法',
-  'invalid_op_shape': '操作结构不完整',
-  'field_not_found': '字段不存在',
-  'duplicate_field_name': '字段名已存在',
-  'invalid_field_type': '字段类型不合法',
-  'select_enum_required': 'select 类型必须提供 enum',
-  'enum_only_for_select': '只有 select 字段才能设置 enum',
-  'unknown_field_props': '包含不支持的字段属性',
-  'unknown_schema_props': '包含不支持的 schema 属性'
+  'invalid_operations_array': 'patch.reason.invalid_operations_array',
+  'invalid_op_shape': 'patch.reason.invalid_op_shape',
+  'field_not_found': 'patch.reason.target_not_found',
+  'duplicate_field_name': 'patch.reason.duplicate_field_name',
+  'invalid_field_type': 'patch.reason.invalid_field_type',
+  'select_enum_required': 'patch.reason.select_enum_required',
+  'enum_only_for_select': 'patch.reason.enum_only_for_select',
+  'unknown_field_props': 'patch.reason.unknown_field_props',
+  'unknown_schema_props': 'patch.reason.unknown_schema_props'
 };
 
 function getReasonText(reason: string): string {

@@ -1,0 +1,112 @@
+{
+  "common": {
+    "title": "AxiomSchema",
+    "subtitle": "Describe needs → Generate Schema → Real-time preview",
+    "clear": "Clear",
+    "example": "Example",
+    "copy": "Copy",
+    "export": "Export",
+    "import": "Import",
+    "history": "History",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "save": "Save",
+    "loading": "Processing...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning"
+  },
+  "prompt": {
+    "placeholder": "Describe your form needs, AI will generate Schema for you\n\ne.g.:\n• Create a registration form: Name, Email, Phone\n• Add a required \"Phone\" field to current form",
+    "generate": "Generate Schema",
+    "continue": "Continue Editing",
+    "retry": "Retry",
+    "status": {
+      "idle": "Describe your form needs, AI will generate Schema for you",
+      "classifying": "Understanding your intent...",
+      "generating": "Generating Schema, please wait...",
+      "patching": "Generating patch based on current Schema...",
+      "applying": "Applying changes...",
+      "done": "Completed, you can continue to edit or add needs",
+      "error": "Execution failed, please check input or retry"
+    }
+  },
+  "clarify": {
+    "title": "Intent Clarification",
+    "subtitle": "AI is not sure about your requirements",
+    "current_intent": "Current Intent:",
+    "confidence": "Confidence:",
+    "options_title": "Please choose your real intent:",
+    "patch": "Modify current form",
+    "regenerate": "Regenerate from scratch",
+    "explain": "I will explain more"
+  },
+  "editor": {
+    "json_title": "Schema JSON",
+    "json_subtitle": "Single Source of Truth",
+    "preview_title": "Real-time Render",
+    "preview_subtitle": "Auto-generated based on Schema",
+    "placeholder": "Please provide a valid Schema JSON first",
+    "parse_error": "JSON Parse Error: ",
+    "field_editor": "Field Editor",
+    "label": "Label",
+    "placeholder_label": "Placeholder",
+    "default": "Default Value",
+    "required": "Required"
+  },
+  "patch": {
+    "confirm_title": "Confirm Changes",
+    "confirm_subtitle": "Following changes will be applied to current Schema",
+    "version_info": "Patch base: v{base} · Current: v{current}",
+    "applied_count": "Applying {count} changes",
+    "no_changes": "No applicable changes",
+    "status": {
+      "add": "Add field: {name}",
+      "update": "Update field: {name} ({props})",
+      "remove": "Remove field: {name}",
+      "update_schema": "Update Schema ({props})"
+    },
+    "reason": {
+      "target_not_found": "Target field not found",
+      "version_mismatch": "Version mismatch",
+      "no_op": "No actual changes",
+      "invalid_value": "Invalid value",
+      "invalid_operations_array": "Invalid operations array structure",
+      "invalid_op_shape": "Invalid operation shape",
+      "duplicate_field_name": "Duplicate field name",
+      "invalid_field_type": "Invalid field type",
+      "select_enum_required": "Enum is required for select type",
+      "enum_only_for_select": "Enum is only allowed for select type",
+      "unknown_field_props": "Unknown field properties",
+      "unknown_schema_props": "Unknown schema properties"
+    }
+  },
+  "history": {
+    "title": "Change History",
+    "empty": "No history records",
+    "latest": "Latest change: ",
+    "rollback": "Rollback",
+    "confirm_rollback": "Confirm Rollback",
+    "rollback_msg": "Will rollback from v{to} to v{base}. Impact: {added} added, {updated} updated, {removed} removed. Are you sure?",
+    "rollback_success": "Rolled back to state before \"{summary}\"",
+    "mismatch_title": "Schema Version Conflict",
+    "mismatch_subtitle": "Version mismatch detected, cannot apply changes safely",
+    "mismatch_reason_title": "Reason",
+    "mismatch_reason": "The Schema was modified manually while AI was generating changes, causing a version mismatch.",
+    "mismatch_suggest_title": "Suggestions",
+    "mismatch_suggest_1": "Resubmit your request (Recommended)",
+    "mismatch_suggest_2": "Or manually merge differences before applying"
+  },
+  "message": {
+    "copy_success": "Copied to clipboard",
+    "copy_fail": "Copy failed",
+    "import_fail": "File read failed",
+    "clear_confirm": "Are you sure you want to clear current Schema? This cannot be undone.",
+    "clear_success": "Schema cleared",
+    "apply_success": "Applied: {summary}",
+    "skipped": "{count} skipped",
+    "pending_patch": "There is a pending patch, please handle it first",
+    "no_schema_patch": "No Schema available to modify, please generate one first."
+  }
+}

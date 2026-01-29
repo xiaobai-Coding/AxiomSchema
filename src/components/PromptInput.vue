@@ -2,6 +2,9 @@
 // @ts-nocheck
 import { ref, computed } from 'vue'
 import { NCard, NInput, NButton, NSpace } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 type GeneratePhase = 'idle' | 'classifying' | 'generating' | 'patching' | 'applying' | 'done' | 'error'
 
@@ -15,22 +18,22 @@ const emit = defineEmits(['generate'])
 const userPrompt = ref<string>('')
 
 // 示例 prompt
-const examplePrompts = [
-  '创建一个包含姓名、邮箱、手机号的注册表单',
-  '在当前表单中新增一个手机号字段，必填'
-]
+const examplePrompts = computed(() => [
+  t('prompt.placeholder').split('\n\n')[1]?.split('\n')[1]?.replace('• ', '') || '',
+  t('prompt.placeholder').split('\n\n')[1]?.split('\n')[2]?.replace('• ', '') || ''
+])
 
 // 状态提示文案
 const statusText = computed(() => {
   const phase = props.phase || 'idle'
   const statusMap: Record<GeneratePhase, string> = {
-    idle: '描述你的表单需求，AI 将为你生成 Schema',
-    classifying: '正在理解你的意图…',
-    generating: '正在生成 Schema，请稍候…',
-    patching: '正在基于当前 Schema 生成修改方案…',
-    applying: '正在应用修改…',
-    done: '已完成，你可以继续修改或新增需求',
-    error: '执行失败，请检查输入或重试'
+    idle: t('prompt.status.idle'),
+    classifying: t('prompt.status.classifying'),
+    generating: t('prompt.status.generating'),
+    patching: t('prompt.status.patching'),
+    applying: t('prompt.status.applying'),
+    done: t('prompt.status.done'),
+    error: t('prompt.status.error')
   }
   return statusMap[phase]
 })
@@ -39,13 +42,13 @@ const statusText = computed(() => {
 const buttonText = computed(() => {
   const phase = props.phase || 'idle'
   const textMap: Record<GeneratePhase, string> = {
-    idle: '生成 Schema',
-    classifying: '处理中…',
-    generating: '处理中…',
-    patching: '处理中…',
-    applying: '处理中…',
-    done: '继续修改',
-    error: '重试'
+    idle: t('prompt.generate'),
+    classifying: t('common.loading'),
+    generating: t('common.loading'),
+    patching: t('common.loading'),
+    applying: t('common.loading'),
+    done: t('prompt.continue'),
+    error: t('prompt.retry')
   }
   return textMap[phase]
 })
@@ -89,17 +92,13 @@ const handleClear = () => {
 
 // 填充示例（不触发生成）
 const handleFillExample = () => {
-  const randomIndex = Math.floor(Math.random() * examplePrompts.length)
-  userPrompt.value = examplePrompts[randomIndex]
+  const randomIndex = Math.floor(Math.random() * examplePrompts.value.length)
+  userPrompt.value = examplePrompts.value[randomIndex]
 }
 
 // 计算 placeholder 文本
 const inputPlaceholder = computed(() => {
-  return `描述你的表单需求，AI 将为你生成 Schema
-
-例如：
-• 创建一个注册表单：姓名、邮箱、手机号，手机号需要正则校验
-• 在当前表单中新增一个"手机号"字段，必填`
+  return t('prompt.placeholder')
 })
 
 defineExpose({
@@ -110,8 +109,8 @@ defineExpose({
 <template>
   <NCard class="prompt-card" :bordered="true">
     <div class="prompt-header">
-      <h1 class="prompt-title">AxiomSchema</h1>
-      <p class="prompt-subtitle">描述需求 → 生成 Schema → 实时预览表单（支持增量 Patch）</p>
+      <h1 class="prompt-title">{{ t('common.title') }}</h1>
+      <p class="prompt-subtitle">{{ t('common.subtitle') }}</p>
     </div>
     
     <div class="prompt-input-section">
@@ -144,14 +143,14 @@ defineExpose({
           :disabled="props.phase === 'classifying' || props.phase === 'generating' || props.phase === 'patching' || props.phase === 'applying'"
           @click="handleClear"
         >
-          清空
+          {{ t('common.clear') }}
         </NButton>
         <NButton
           quaternary
           :disabled="props.phase === 'classifying' || props.phase === 'generating' || props.phase === 'patching' || props.phase === 'applying'"
           @click="handleFillExample"
         >
-          示例
+          {{ t('common.example') }}
         </NButton>
       </NSpace>
     </div>

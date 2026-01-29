@@ -1,0 +1,112 @@
+{
+  "common": {
+    "title": "AxiomSchema",
+    "subtitle": "描述需求 → 生成 Schema → 实时预览表单",
+    "clear": "清空",
+    "example": "示例",
+    "copy": "复制",
+    "export": "导出",
+    "import": "导入",
+    "history": "修改历史",
+    "confirm": "确认",
+    "cancel": "取消",
+    "reset": "重置",
+    "save": "保存",
+    "loading": "处理中...",
+    "error": "错误",
+    "success": "成功",
+    "warning": "警告"
+  },
+  "prompt": {
+    "placeholder": "描述你的表单需求，AI 将为你生成 Schema\n\n例如：\n• 创建一个注册表单：姓名、邮箱、手机号\n• 在当前表单中新增一个\"手机号\"字段，必填",
+    "generate": "生成 Schema",
+    "continue": "继续修改",
+    "retry": "重试",
+    "status": {
+      "idle": "描述你的表单需求，AI 将为你生成 Schema",
+      "classifying": "正在理解你的意图...",
+      "generating": "正在生成 Schema，请稍候...",
+      "patching": "正在基于当前 Schema 生成修改方案...",
+      "applying": "正在应用修改...",
+      "done": "已完成，你可以继续修改或新增需求",
+      "error": "执行失败，请检查输入或重试"
+    }
+  },
+  "clarify": {
+    "title": "意图需要澄清",
+    "subtitle": "AI 对你的需求判断不是很确定",
+    "current_intent": "当前判断：",
+    "confidence": "置信度：",
+    "options_title": "请选择你的真实意图：",
+    "patch": "基于当前表单修改",
+    "regenerate": "重新生成一份",
+    "explain": "我补充说明"
+  },
+  "editor": {
+    "json_title": "Schema JSON",
+    "json_subtitle": "AI 与系统的唯一真实状态",
+    "preview_title": "实时渲染",
+    "preview_subtitle": "基于 Schema 自动生成",
+    "placeholder": "请先提供合法的 Schema JSON",
+    "parse_error": "JSON 解析错误：",
+    "field_editor": "字段编辑器",
+    "label": "字段名称 (Label)",
+    "placeholder_label": "占位符 (Placeholder)",
+    "default": "默认值",
+    "required": "是否必填"
+  },
+  "patch": {
+    "confirm_title": "请确认以下变更",
+    "confirm_subtitle": "以下变更将应用到当前 Schema",
+    "version_info": "Patch 基于版本：{base} · 当前 Schema 版本：{current}",
+    "applied_count": "将应用 {count} 条变更",
+    "no_changes": "没有可应用的修改",
+    "status": {
+      "add": "新增字段：{name}",
+      "update": "修改字段：{name} ({props})",
+      "remove": "删除字段：{name}",
+      "update_schema": "修改 Schema 属性 ({props})"
+    },
+    "reason": {
+      "target_not_found": "目标字段不存在",
+      "version_mismatch": "版本不匹配",
+      "no_op": "无实际变更",
+      "invalid_value": "非法值",
+      "invalid_operations_array": "operations 结构不合法",
+      "invalid_op_shape": "操作结构不完整",
+      "duplicate_field_name": "字段名已存在",
+      "invalid_field_type": "字段类型不合法",
+      "select_enum_required": "select 类型必须提供枚举",
+      "enum_only_for_select": "只有 select 字段才能设置枚举",
+      "unknown_field_props": "包含不支持的字段属性",
+      "unknown_schema_props": "包含不支持的 Schema 属性"
+    }
+  },
+  "history": {
+    "title": "修改记录",
+    "empty": "暂无修改记录",
+    "latest": "最近修改：",
+    "rollback": "回滚",
+    "confirm_rollback": "确认回滚",
+    "rollback_msg": "将从 v{to} 回滚到 v{base}。影响：新增 {added} 个，修改 {updated} 个，删除 {removed} 个。确定要回滚吗？",
+    "rollback_success": "已回滚到「{summary}」之前的状态",
+    "mismatch_title": "Schema 版本冲突",
+    "mismatch_subtitle": "检测到版本不一致，无法安全应用修改",
+    "mismatch_reason_title": "问题原因",
+    "mismatch_reason": "在 AI 生成修改期间，Schema 已被手动修改，导致版本不匹配。",
+    "mismatch_suggest_title": "建议操作",
+    "mismatch_suggest_1": "重新提交修改请求（推荐）",
+    "mismatch_suggest_2": "或手动对比并合并差异后再尝试应用"
+  },
+  "message": {
+    "copy_success": "已复制到剪贴板",
+    "copy_fail": "复制失败",
+    "import_fail": "文件读取失败",
+    "clear_confirm": "确定要清空当前 Schema 吗？此操作不可恢复。",
+    "clear_success": "已清空 Schema",
+    "apply_success": "已应用：{summary}",
+    "skipped": "{count} 条已跳过",
+    "pending_patch": "当前有待确认的 Patch，请先处理后再继续操作",
+    "no_schema_patch": "当前没有可修改的 Schema，请先生成一份表单。"
+  }
+}

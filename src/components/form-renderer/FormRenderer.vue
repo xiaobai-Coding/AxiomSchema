@@ -3,7 +3,7 @@
     <NFormItem
       v-for="field in normalizedFields"
       :key="field.name"
-      :label="field.label ?? field.name"
+      :label="field.label || t('editor.label')"
       :path="field.name"
       :required="field.required === true"
       class="field-item"
@@ -26,6 +26,9 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { NForm, NFormItem } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 // @ts-ignore vue shim
 import FieldRenderer from './FieldRenderer.vue'
 

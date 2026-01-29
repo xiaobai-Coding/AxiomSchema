@@ -18,7 +18,7 @@ export function shouldClarify(intentResult: IntentResult): {
   if (intent === "UNKNOWN") {
     return {
       needClarify: true,
-      reason: `无法识别意图类型：${intent}`
+      reason: `intent_unknown`
     }
   }
 
@@ -35,7 +35,7 @@ export function shouldClarify(intentResult: IntentResult): {
 
     return {
       needClarify: true,
-      reason: `置信度不足：${intent} (${(confidence * 100).toFixed(1)}%)`,
+      reason: `low_confidence:${intent}:${(confidence * 100).toFixed(1)}%`,
       suggested
     }
   }
@@ -68,7 +68,9 @@ export function isVagueOptimizeInput(raw: string): boolean {
       '新增', '添加', '增加', '删除', '移除', '去掉', '改成', '修改', '设置',
       '必填', '可选', '默认', '默认值', '必选', '校验', '长度', '范围', '最小', '最大',
       'title', 'description', 'schema', '字段', 'field', 'name', 'label', 'type',
-      'phone', 'email', 'username', 'password', 'age', 'gender'
+      'phone', 'email', 'username', 'password', 'age', 'gender',
+      'add', 'new', 'create', 'remove', 'delete', 'update', 'change', 'set',
+      'required', 'optional', 'default', 'validate', 'validation', 'min', 'max'
     ]
     if (explicitSignals.some(k => s.includes(k))) return false
   

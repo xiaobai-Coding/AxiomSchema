@@ -1,3 +1,5 @@
+import i18n from '../locales/i18n';
+
 // 从环境变量中读取配置
 const getConfig = () => ({
   apiKey: import.meta.env.VITE_AI_API_KEY || "",
@@ -37,6 +39,12 @@ export async function callDeepSeekAPI(
     Authorization: `Bearer ${config.apiKey}`
     
   };
+
+  // Get current locale from i18n
+  // @ts-ignore - locale.value is correct for legacy: false but TS might complain depending on version
+  const locale = i18n.global.locale.value || i18n.global.locale;
+  headers["X-Locale"] = locale;
+
   if (useServerApi) {
     headers["X-Client-Token"] = import.meta.env.VITE_CLIENT_TOKEN || "";
     delete headers.Authorization;
@@ -77,4 +85,3 @@ export async function callDeepSeekAPI(
     return { error: msg };
   }
 }
-

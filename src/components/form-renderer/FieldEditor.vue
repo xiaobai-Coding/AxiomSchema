@@ -1,28 +1,28 @@
 <template>
   <NDrawer :show="show" :width="380" placement="right" :mask-closable="false" :close-on-esc="false"
     @update:show="(val) => emit('update:show', val)">
-    <NDrawerContent :title="`正在编辑字段 ${fieldKey}`">
+    <NDrawerContent :title="`${t('editor.field_editor')} ${fieldKey}`">
       <NForm label-placement="top" :show-require-mark="false" :model="formState">
-        <NFormItem label="标题 (label)">
-          <NInput :value="formState.label" placeholder="字段标题" @update:value="(v) => (formState.label = v)" />
+        <NFormItem :label="t('editor.label')">
+          <NInput :value="formState.label" :placeholder="t('editor.label')" @update:value="(v) => (formState.label = v)" />
         </NFormItem>
-        <NFormItem label="占位符 (placeholder)">
-          <NInput :value="formState.placeholder" placeholder="占位提示"
+        <NFormItem :label="t('editor.placeholder_label')">
+          <NInput :value="formState.placeholder" :placeholder="t('editor.placeholder_label')"
             @update:value="(v) => (formState.placeholder = v)" />
         </NFormItem>
-        <NFormItem label="默认值 (default)">
-          <NInput :value="formState.default" placeholder="默认值" @update:value="(v) => (formState.default = v)" />
+        <NFormItem :label="t('editor.default')">
+          <NInput :value="formState.default" :placeholder="t('editor.default')" @update:value="(v) => (formState.default = v)" />
         </NFormItem>
-        <NFormItem label="必填 (required)">
+        <NFormItem :label="t('editor.required')">
           <NSwitch :value="formState.required" @update:value="(v) => (formState.required = v)" />
         </NFormItem>
       </NForm>
       <template #footer>
         <NSpace justify="space-between" style="width: 100%">
-          <NButton :disabled="!canReset" @click="handleReset">重置本字段</NButton>
+          <NButton :disabled="!canReset" @click="handleReset">{{ t('common.reset') }}</NButton>
           <NSpace>
-            <NButton @click="handleCancel">取消</NButton>
-            <NButton type="primary" @click="handleConfirm">完成</NButton>
+            <NButton @click="handleCancel">{{ t('common.cancel') }}</NButton>
+            <NButton type="primary" @click="handleConfirm">{{ t('common.confirm') }}</NButton>
           </NSpace>
         </NSpace>
       </template>
@@ -33,6 +33,9 @@
 <script setup lang="ts">
 import { reactive, watch, computed } from 'vue'
 import { NDrawer, NDrawerContent, NForm, NFormItem, NInput, NSwitch, NButton, NSpace } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   show: boolean

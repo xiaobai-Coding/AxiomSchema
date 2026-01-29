@@ -1,6 +1,7 @@
 // Intent Classifier Prompt
-export const ClassifierPrompt = `
+export const getClassifierPrompt = (locale: string = 'zh') => `
 你是一个 JSON Schema 表单构建器的「意图分类器（Intent Classifier）」。
+${locale === 'en' ? 'Please respond and reason in English.' : '请使用中文进行思考和回复。'}
 
 【你的唯一任务】
 只做意图分类 + 置信度评估。
@@ -49,9 +50,11 @@ export const ClassifierPrompt = `
   "confidence": number
 }
 `
+
 // Patch Update Prompt
-const PATCH_UPDATE_PROMPT = `
+const getPatchUpdatePrompt = (locale: string = 'zh') => `
 你是一个「表单 Schema 的增量修改助手（Patch Generator）」。
+${locale === 'en' ? 'The "summary" and any reasoning MUST be in English.' : '“summary” 字段以及任何推理过程必须使用中文。'}
 
 【当前 Schema 结构】
 {
@@ -94,7 +97,6 @@ const PATCH_UPDATE_PROMPT = `
 【Patch 输出格式（必须严格遵守）】
 - 只有当字段type类型为需要用户选择时，如select,才需要提供enum, 其他类型的字段无需enum
 - 枚举值必须为数组，数组元素为字符串
-- 枚举值必须为数组，数组元素为字符串
 - 最终只能输出JSON格式，不要包含任何其他内容
 你必须返回一个 JSON 对象，结构如下：
 
@@ -121,6 +123,7 @@ const PATCH_UPDATE_PROMPT = `
 
 - summary：
   - 用一句简短、可读的描述总结本次修改
+  - ${locale === 'en' ? 'MUST be in English.' : '必须使用中文。'}
   - 示例：
     - "+Phone(required)"
     - "~Email(required)"
@@ -168,14 +171,14 @@ const PATCH_UPDATE_PROMPT = `
 返回：
 {
   "baseVersion": 3,
-  "summary": "+Phone",
+  "summary": "${locale === 'en' ? '+Phone' : '+手机号'}",
   "operations": [
     {
       "op": "add",
       "target": "field",
       "value": {
         "name": "phone",
-        "label": "手机号",
+        "label": "${locale === 'en' ? 'Phone' : '手机号'}",
         "type": "string",
         "required": false,
         "default": "",
@@ -186,65 +189,18 @@ const PATCH_UPDATE_PROMPT = `
 
 ---
 
-【示例 2】
-用户需求：把邮箱设为必填
-
-返回：
-{
-  "baseVersion": 3,
-  "summary": "~Email(required)",
-  "operations": [
-    {
-      "op": "update",
-      "target": "field",
-      "name": "email",
-      "value": {
-        "required": true
-      }
-    }
-  ]
-}
-
----
-
-【示例 3】
-用户需求：删除年龄字段
-
-返回：
-{
-  "baseVersion": 3,
-  "summary": "-Age",
-  "operations": [
-    {
-      "op": "remove",
-      "target": "field",
-      "name": "age"
-    }
-  ]
-}
-
----
-
-【异常情况处理（重要）】
-- 你不要因为“字段不存在”就返回 error 或清空 operations。
-- 如果用户明确要修改某个字段（例如 email），即使当前 schema 中不存在该字段，你也应该生成对应的 update 操作：
-  - 系统会在后续校验阶段判断该字段是否存在，并在 Patch Preview 中标记为“将跳过 + 原因”。
-- 只有当用户指令与表单/Schema 完全无关时，才允许返回：
-  { "operations": [], "error": "..." }
-
----
-
 【禁止行为】
 
 - 返回完整 Schema
 - 输出任何解释性文字
 - 输出非 JSON 内容
 - 输出任何多余字段
-`;
+`
 
 // Schema Generator Prompt
-const SCHEMA_GENERATOR_PROMPT = `
+const getSchemaGeneratorPrompt = (locale: string = 'zh') => `
 你是一个专业的前端表单 Schema 生成助手。
+${locale === 'en' ? 'The "title", "description", and "label" MUST be in English.' : '“title”、“description” 和 “label” 必须使用中文。'}
 
 你的唯一任务是：
 根据用户的自然语言需求，生成一个【可被前端程序直接使用】的 JSON Schema，
@@ -297,7 +253,7 @@ Schema 固定结构
 - 不允许出现中文
 
 2. label
-- 使用中文
+- ${locale === 'en' ? 'Use English' : '使用中文'}
 - 给用户看的字段名称
 
 3. type 仅允许以下值：
@@ -345,14 +301,14 @@ Schema 固定结构
 如果用户需求不明确：
 - 合理推断
 - 保持字段数量在 3–8 个之间
-`;
-export const getSchemaPrompt = (type: string) =>{
-  if(type === 'FULL_GENERATE' || type === 'REGENERATE'){
-    return SCHEMA_GENERATOR_PROMPT
-  }else if(type === 'PATCH_UPDATE'){
-    return PATCH_UPDATE_PROMPT
-  }else if(type === 'UNKNOWN'){
+`
+
+export const getSchemaPrompt = (type: string, locale: string = 'zh') => {
+  if (type === 'FULL_GENERATE' || type === 'REGENERATE') {
+    return getSchemaGeneratorPrompt(locale)
+  } else if (type === 'PATCH_UPDATE') {
+    return getPatchUpdatePrompt(locale)
+  } else if (type === 'UNKNOWN') {
     return null
   }
 }
-

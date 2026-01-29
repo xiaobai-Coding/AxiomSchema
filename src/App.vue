@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog } from 'naive-ui'
 // @ts-ignore vue shim
 import PromptInput from './components/PromptInput.vue'
@@ -13,7 +13,15 @@ import PatchPreviewModal from './components/PatchPreviewModal.vue'
 // @ts-ignore vue shim
 import VersionMismatchDialog from './components/VersionMismatchDialog.vue'
 import { callDeepSeekAPI } from './services/aiService'
-import { ClassifierPrompt, getSchemaPrompt } from './prompts/schemaPrompt';
+import { getClassifierPrompt, getSchemaPrompt } from './prompts/schemaPrompt';
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
+
+function changeLocale(lang: 'zh' | 'en') {
+  locale.value = lang
+  localStorage.setItem('locale', lang)
+}
 import { applyPatchSafe } from './utils/applyPatch'
 import { validatePatch } from './utils/validatePatch'
 import { shouldClarify, isVagueOptimizeInput } from './utils/intentGuard'
@@ -62,19 +70,6 @@ const themeOverrides = {
     buttonColor: '#ffffff'
   }
 }
-// 默认示例 Schema 文本（包含 meta.version）
-const defaultSchema = {
-  meta: { version: 1 },
-  title: '用户注册',
-  description: '注册表单',
-  fields: [
-    { name: 'username', label: '用户名', type: 'string', required: true, default: '' },
-    { name: 'age', label: '年龄', type: 'number', default: null },
-    { name: 'gender', label: '性别', type: 'select', enum: ['男', '女'], default: '男' },
-    { name: 'subscribe', label: '是否订阅', type: 'boolean', default: false }
-  ]
-}
-
 function ensureSchemaVersion(s: any, forceInit = false) {
   if (!s) return null
   const next = JSON.parse(JSON.stringify(s))
@@ -203,18 +198,18 @@ function addPatchHistory(record: PatchHistoryRecord) {
 function rollbackTo(record: PatchHistoryRecord) {
   // 当存在待确认的 Patch 时，禁止回滚，避免状态冲突
   if (isPatchModalOpen.value || pendingPatch.value) {
-    message.warning('当前有待确认的 Patch，请先处理后再回滚')
+    message.warning(t('message.pending_patch'))
     return
   }
   const added = record.counts?.added ?? record.impact?.added?.length ?? 0
   const updated = record.counts?.updated ?? record.impact?.updated?.length ?? 0
   const removed = record.counts?.removed ?? record.impact?.removed?.length ?? 0
-  const content = `将从 v${record.toVersion ?? 0} 回滚到 v${record.baseVersion ?? 0}。影响：新增 ${added} 个，修改 ${updated} 个，删除 ${removed} 个。确定要回滚吗？`
+  const content = t('history.rollback_msg', { to: record.toVersion ?? 0, base: record.baseVersion ?? 0, added, updated, removed })
   dialog.warning({
-    title: '确认回滚',
+    title: t('history.confirm_rollback'),
     content,
-    positiveText: '确认回滚',
-    negativeText: '取消',
+    positiveText: t('history.confirm_rollback'),
+    negativeText: t('common.cancel'),
     positiveButtonProps: {
       type: 'primary',
       size: 'small',
@@ -242,7 +237,7 @@ function performRollback(record: PatchHistoryRecord) {
   showFieldEditor.value = false
   backupField.value = null
   showHistoryDrawer.value = false
-  message.success(`已回滚到「${record.summary}」之前的状态`)
+  message.success(t('history.rollback_success', { summary: record.summary }))
 }
 
 // 格式化时间
@@ -254,11 +249,16 @@ function formatTime(timestamp: number): string {
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
 
-  if (seconds < 60) return '刚刚'
-  if (minutes < 60) return `${minutes} 分钟前`
-  if (hours < 24) return `${hours} 小时前`
-  if (days < 7) return `${days} 天前`
-  return new Date(timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  if (seconds < 60) return locale.value === 'zh' ? '刚刚' : 'just now'
+  if (minutes < 60) return locale.value === 'zh' ? `${minutes} 分钟前` : `${minutes}m ago`
+  if (hours < 24) return locale.value === 'zh' ? `${hours} 小时前` : `${hours}h ago`
+  if (days < 7) return locale.value === 'zh' ? `${days} 天前` : `${days}d ago`
+  return new Date(timestamp).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 // 从 patch 中提取 diff 信息
@@ -362,7 +362,7 @@ async function onClarifyChoosePatch() {
 
   // PATCH 必须有 schema
   if (!schema.value) {
-    message.warning('当前没有可修改的 Schema，请先生成一份表单。')
+    message.warning(t('message.no_schema_patch'))
     clarifyVisible.value = false
     clarifyInfo.value = null
     return
@@ -450,7 +450,7 @@ function onClarifyExplainMore() {
 async function handleGenerate(userPrompt: string) {
   // 当存在未处理的 Patch 预览时，禁止再次触发 AI Patch
   if (isPatchModalOpen.value || pendingPatch.value) {
-    message.warning('当前有待确认的 Patch，请先处理后再继续操作')
+    message.warning(t('message.pending_patch'))
     return
   }
   // 重置状态为 idle（如果之前是 done 或 error）
@@ -464,8 +464,9 @@ async function handleGenerate(userPrompt: string) {
   }
   try {
     generatePhase.value = 'classifying'
-    const classification: any = await callDeepSeekAPI(JSON.stringify(promptParams), ClassifierPrompt)
+    const classification: any = await callDeepSeekAPI(JSON.stringify(promptParams), getClassifierPrompt(locale.value))
     if (classification && classification.error) {
+      console.error('分类失败', classification.error)
       parseError.value = classification.error
       generatePhase.value = 'error'
       message.error(classification.error)
@@ -503,7 +504,7 @@ const generateSchema = async (userPrompt: string, intent: string) => {
 
     if (intent === 'PATCH_UPDATE') {
       if (!schema.value) {
-        throw new Error('当前没有可用于 PATCH 的 Schema')
+        throw new Error(t('message.no_schema_patch'))
       }
       generatePhase.value = 'patching'
       // 按 PATCH_UPDATE_PROMPT 约定，将 current_schema 与 user_instruction 作为两部分输入
@@ -514,10 +515,10 @@ ${JSON.stringify(schema.value, null, 2)}
 user_instruction:
 ${userPrompt}
 `.trim()
-      result = await callDeepSeekAPI(patchInput, getSchemaPrompt(intent))
+      result = await callDeepSeekAPI(patchInput, getSchemaPrompt(intent, locale.value))
     } else {
       generatePhase.value = 'generating'
-      result = await callDeepSeekAPI(userPrompt, getSchemaPrompt(intent))
+      result = await callDeepSeekAPI(userPrompt, getSchemaPrompt(intent, locale.value))
     }
     if (result && result.error) {
       parseError.value = result.error
@@ -548,6 +549,7 @@ ${userPrompt}
       showFieldEditor.value = false
       backupField.value = null
       highlightMap.value = { added: [], updated: [] }
+      message.success(t('message.apply_success', { summary: normalized.title }))
       generatePhase.value = 'done'
     }
 
@@ -632,8 +634,8 @@ function confirmPatch() {
     })
 
     // Toast / message
-    const skippedNote = (validation.stats?.invalid ?? 0) > 0 ? `，${validation.stats.invalid} 条已跳过` : ''
-    message.success(`已应用：${summary}${skippedNote}`, { duration: 4000 })
+    const skippedNote = (validation.stats?.invalid ?? 0) > 0 ? t('message.skipped', { count: validation.stats.invalid }) : ''
+    message.success(t('message.apply_success', { summary }) + skippedNote, { duration: 4000 })
 
     // cleanup
     setTimeout(() => {
@@ -673,16 +675,16 @@ function cancelPatch() {
 // 复制当前 schema
 async function copySchema() {
   if (!schema.value) {
-    message.warning('当前没有可复制的 Schema')
+    message.warning(t('common.warning'))
     return
   }
   const text = JSON.stringify(schema.value, null, 2)
   try {
     await navigator.clipboard.writeText(text)
-    message.success('已复制到剪贴板')
+    message.success(t('message.copy_success'))
   } catch (err) {
     console.error('复制失败', err)
-    message.error('复制失败')
+    message.error(t('message.copy_fail'))
   }
 }
 
@@ -702,14 +704,14 @@ function exportSchema() {
 // 清空 Schema
 function clearSchema() {
   if (!schema.value) {
-    message.warning('当前没有可清空的 Schema')
+    message.warning(t('common.warning'))
     return
   }
   dialog.warning({
-    title: '确认清空',
-    content: '确定要清空当前 Schema 吗？此操作不可恢复。',
-    positiveText: '确认清空',
-    negativeText: '取消',
+    title: t('common.clear'),
+    content: t('message.clear_confirm'),
+    positiveText: t('common.clear'),
+    negativeText: t('common.cancel'),
     onPositiveClick: () => {
       schema.value = null
       schemaText.value = ''
@@ -718,7 +720,7 @@ function clearSchema() {
       showFieldEditor.value = false
       backupField.value = null
       highlightMap.value = { added: [], updated: [] }
-      message.success('已清空 Schema')
+      message.success(t('message.clear_success'))
     }
   })
 }
@@ -731,14 +733,14 @@ function openFieldEditor(key: string) {
 }
 
 // Schema 操作菜单选项
-const schemaMenuOptions = [
-  { label: '导入 Schema', key: 'import' },
-  { label: '复制 Schema', key: 'copy' },
-  { label: '导出 Schema', key: 'export' },
-  { label: '清空 Schema', key: 'clear' },
+const schemaMenuOptions = computed(() => [
+  { label: t('common.import'), key: 'import' },
+  { label: t('common.copy'), key: 'copy' },
+  { label: t('common.export'), key: 'export' },
+  { label: t('common.clear'), key: 'clear' },
   { type: 'divider' },
-  { label: '修改历史', key: 'history' }
-]
+  { label: t('common.history'), key: 'history' }
+])
 
 // 处理 Schema 菜单选择
 function handleSchemaMenuSelect(key: string) {
@@ -905,6 +907,23 @@ function handleFileSelect(event: Event) {
 <template>
   <NConfigProvider :theme-overrides="themeOverrides">
     <main class="layout">
+      <!-- 语言切换器 -->
+      <div class="lang-switcher">
+        <div class="segmented-control">
+          <button 
+            :class="{ active: locale === 'zh' }" 
+            @click="changeLocale('zh')"
+          >
+            中
+          </button>
+          <button 
+            :class="{ active: locale === 'en' }" 
+            @click="changeLocale('en')"
+          >
+            EN
+          </button>
+        </div>
+      </div>
       <PromptInput ref="promptInputRef" :on-generate="handleGenerate" :has-schema="!!schema" :phase="generatePhase"
         @generate="handleGenerate" />
 
@@ -916,46 +935,49 @@ function handleFileSelect(event: Event) {
               <span class="clarify-sparkle">💭</span>
             </div>
             <div class="clarify-title">
-              <h4>意图需要澄清</h4>
-              <p class="clarify-subtitle">AI 对你的需求判断不是很确定</p>
+              <h4>{{ t('clarify.title') }}</h4>
+              <p class="clarify-subtitle">{{ t('clarify.subtitle') }}</p>
             </div>
           </div>
 
           <div class="clarify-content">
             <div class="clarify-info">
               <div class="info-item">
-                <span class="info-label">当前判断：</span>
+                <span class="info-label">{{ t('clarify.current_intent') }}</span>
                 <span class="info-value intent">{{ clarifyInfo.intent }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">置信度：</span>
+                <span class="info-label">{{ t('clarify.confidence') }}</span>
                 <span class="info-value confidence">{{ (clarifyInfo.confidence * 100).toFixed(1) }}%</span>
               </div>
               <div class="info-reason">
-                {{ clarifyInfo.reason }}
+                {{ clarifyInfo.reason === 'intent_unknown' ? t('patch.reason.invalid_op_shape') : 
+                   clarifyInfo.reason.startsWith('low_confidence') ? 
+                   t('clarify.subtitle') + ' (' + clarifyInfo.reason.split(':')[2] + ')' : 
+                   clarifyInfo.reason }}
               </div>
             </div>
 
             <div class="clarify-options">
-              <p class="options-title">请选择你的真实意图：</p>
+              <p class="options-title">{{ t('clarify.options_title') }}</p>
               <div class="clarify-buttons">
                 <NButton type="primary" @click="onClarifyChoosePatch" class="option-btn">
                   <template #icon>
                     <span class="btn-icon">✏️</span>
                   </template>
-                  基于当前表单修改
+                  {{ t('clarify.patch') }}
                 </NButton>
                 <NButton type="info" @click="onClarifyChooseRegenerate" class="option-btn">
                   <template #icon>
                     <span class="btn-icon">🔄</span>
                   </template>
-                  重新生成一份
+                  {{ t('clarify.regenerate') }}
                 </NButton>
                 <NButton ghost @click="onClarifyExplainMore" class="option-btn">
                   <template #icon>
                     <span class="btn-icon">💬</span>
                   </template>
-                  我补充说明
+                  {{ t('clarify.explain') }}
                 </NButton>
               </div>
             </div>
@@ -965,44 +987,44 @@ function handleFileSelect(event: Event) {
 
       <!-- Patch 历史记录（仅显示最近一条） -->
       <div v-if="patchHistory.length > 0" class="history-hint" @click="showHistoryDrawer = true">
-        <span class="history-text">最近修改：{{ patchHistory[0].summary }}</span>
+        <span class="history-text">{{ t('history.latest') }}{{ patchHistory[0].summary }}</span>
       </div>
 
       <section class="grid">
         <div class="panel editor-panel">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Schema JSON</p>
-              <h2>AI 与系统的唯一真实状态</h2>
+              <p class="eyebrow">{{ t('editor.json_title') }}</p>
+              <h2>{{ t('editor.json_subtitle') }}</h2>
             </div>
             <div class="actions">
               <NDropdown :options="schemaMenuOptions" trigger="click" @select="handleSchemaMenuSelect">
                 <NButton size="tiny" quaternary type="primary" class="schema-action-btn">
-                  Schema 操作
+                  {{ t('common.history') }}
                   <span style="margin-left: 4px; font-size: 10px;">▼</span>
                 </NButton>
               </NDropdown>
               <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileSelect" />
             </div>
           </div>
-          <NInput :value="schemaText" type="textarea" placeholder="粘贴或编辑 JSON Schema" class="schema-input" @update:value="(val) => schemaText = val" />
+          <NInput :value="schemaText" type="textarea" :placeholder="t('editor.placeholder')" class="schema-input" @update:value="(val) => schemaText = val" />
           <NAlert v-if="parseError" type="error" class="alert">
-            JSON 解析错误：{{ parseError }}
+            {{ t('editor.parse_error') }}{{ parseError }}
           </NAlert>
         </div>
 
         <div class="panel form-panel">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">实时渲染</p>
-              <h2 class="text-overflow-ellipsis">{{ schema?.title || '执行结果' }}</h2>
+              <p class="eyebrow">{{ t('editor.preview_title') }}</p>
+              <h2 class="text-overflow-ellipsis">{{ schema?.title || t('common.title') }}</h2>
             </div>
-            <span class="hint">基于 Schema 自动生成</span>
+            <span class="hint">{{ t('editor.preview_subtitle') }}</span>
           </div>
           <div class="form-body">
             <FormRenderer v-if="schema" :schema="schema" :selected-field-key="selectedFieldKey"
               :highlight-map="highlightMap" @select-field="openFieldEditor" />
-            <p v-else class="placeholder">请先提供合法的 Schema JSON</p>
+            <p v-else class="placeholder">{{ t('editor.placeholder') }}</p>
           </div>
         </div>
       </section>
@@ -1021,7 +1043,7 @@ function handleFileSelect(event: Event) {
       <!-- Patch History Drawer -->
       <NDrawer :show="showHistoryDrawer" :width="400" placement="right"
         @update:show="(val) => (showHistoryDrawer = val)">
-        <NDrawerContent title="修改记录">
+        <NDrawerContent :title="t('history.title')">
           <div class="history-drawer-content">
             <div v-for="(record, index) in patchHistory" :key="record.id" class="history-item"
               :class="{ 'history-item--latest': index === 0 }">
@@ -1033,35 +1055,35 @@ function handleFileSelect(event: Event) {
                 <div class="meta-tags">
                   <NTag size="small" type="info" style="margin-right:6px">{{ record.source || 'AI' }}</NTag>
                   <NTag size="small" type="default" style="margin-right:6px">v{{ record.baseVersion ?? 0 }} → v{{ record.toVersion ?? 0 }}</NTag>
-                  <NTag size="small" type="success" style="margin-right:6px">新增 {{ record.counts?.added ?? record.impact?.added?.length ?? 0 }}</NTag>
-                  <NTag size="small" type="warning" style="margin-right:6px">修改 {{ record.counts?.updated ?? record.impact?.updated?.length ?? 0 }}</NTag>
-                  <NTag size="small" type="error">删除 {{ record.counts?.removed ?? record.impact?.removed?.length ?? 0 }}</NTag>
+                  <NTag size="small" type="success" style="margin-right:6px">{{ t('patch.status.add', { name: record.counts?.added ?? record.impact?.added?.length ?? 0 }) }}</NTag>
+                  <NTag size="small" type="warning" style="margin-right:6px">{{ t('patch.status.update', { name: record.counts?.updated ?? record.impact?.updated?.length ?? 0, props: '' }) }}</NTag>
+                  <NTag size="small" type="error">{{ t('patch.status.remove', { name: record.counts?.removed ?? record.impact?.removed?.length ?? 0 }) }}</NTag>
                 </div>
                 <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-                  <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? '收起详情' : '展开详情' }}</NButton>
+                  <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
                   <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
-                    <div style="color: #fff;">回滚</div>
+                    <div style="color: #fff;">{{ t('history.rollback') }}</div>
                   </NButton>
                 </div>
               </div>
 
               <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
                 <div v-if="record.impact?.added && record.impact.added.length > 0" class="diff-line">
-                  <strong>新增：</strong> {{ record.impact.added.join('、') }}
+                  <strong>{{ t('common.success') }}：</strong> {{ record.impact.added.join('、') }}
                 </div>
                 <div v-if="record.impact?.updated && record.impact.updated.length > 0" class="diff-line">
-                  <strong>修改：</strong> {{ record.impact.updated.join('、') }}
+                  <strong>{{ t('common.warning') }}：</strong> {{ record.impact.updated.join('、') }}
                 </div>
                 <div v-if="record.impact?.removed && record.impact.removed.length > 0" class="diff-line">
-                  <strong>删除：</strong> {{ record.impact.removed.join('、') }}
+                  <strong>{{ t('common.error') }}：</strong> {{ record.impact.removed.join('、') }}
                 </div>
                 <div class="diff-line" v-if="record.counts?.skippedOps">
-                  <strong>跳过：</strong> {{ record.counts.skippedOps }} 条
+                  <strong>{{ t('message.skipped', { count: '' }) }}：</strong> {{ record.counts.skippedOps }}
                 </div>
               </div>
             </div>
             <div v-if="patchHistory.length === 0" class="history-empty">
-              暂无修改记录
+              {{ t('history.empty') }}
             </div>
           </div>
         </NDrawerContent>
@@ -1077,6 +1099,45 @@ function handleFileSelect(event: Event) {
   flex-direction: column;
   gap: 16px;
   height: 100%;
+  position: relative;
+}
+
+.lang-switcher {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  z-index: 100;
+}
+
+.segmented-control {
+  display: flex;
+  background: #f1f5f9;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.segmented-control button {
+  border: none;
+  background: transparent;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 40px;
+}
+
+.segmented-control button:hover {
+  color: #0f172a;
+}
+
+.segmented-control button.active {
+  background: #ffffff;
+  color: #6366f1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .panel {

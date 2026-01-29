@@ -12,7 +12,8 @@
     "@vercel/kv": "^3.0.0",
     "@vercel/node": "^5.5.16",
     "naive-ui": "^2.43.2",
-    "vue": "^3.5.24"
+    "vue": "^3.5.24",
+    "vue-i18n": "^11.2.8"
   },
   "devDependencies": {
     "@types/node": "^24.10.4",

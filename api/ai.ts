@@ -81,7 +81,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: "Unauthorized client"
     });
   }
-  // 3️⃣ 参数校验
+
+  // 4️⃣ 读取 Locale
+  const locale = (req.headers["x-locale"] as string) || "zh";
+
+  // 5️⃣ 参数校验
   const { messages } = req.body;
   if (!Array.isArray(messages)) {
     return res.status(400).json({
@@ -89,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // 4️⃣ 读取服务端 Key
+  // 6️⃣ 读取服务端 Key
   const API_KEY = requireEnv("AI_API_KEY");
   const API_BASE_URL = requireEnv("AI_API_BASE_URL");
   if (!API_KEY) {
@@ -99,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     throw new Error("Missing AI_API_BASE_URL");
   }
   try {
-    // 5️⃣ 转发请求到 DeepSeek
+    // 7️⃣ 转发请求到 DeepSeek
     const response = await fetch(`${API_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {

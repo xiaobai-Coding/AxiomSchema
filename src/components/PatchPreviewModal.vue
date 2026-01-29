@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NModal, NAlert } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface PatchOperation {
   op: 'add' | 'update' | 'remove'
@@ -56,11 +59,11 @@ function buildPatchDiffSummary(schema: any, patch: Patch | null): DiffItem[] {
   patch.operations.forEach((op, index) => {
     if (op.op === 'add' && op.target === 'field') {
       const fieldValue = op.value || {}
-      const requiredText = fieldValue.required ? '必填' : '选填'
+      const requiredText = fieldValue.required ? t('editor.required') : t('common.example')
       items.push({
         key: `add-${index}`,
         type: 'add',
-        text: `新增字段：${fieldValue.label || fieldValue.name || '未知'}（${fieldValue.type || 'unknown'}，${requiredText}）`
+        text: t('patch.status.add', { name: `${fieldValue.label || fieldValue.name || t('common.error')}（${fieldValue.type || 'unknown'}，${requiredText}）` })
       })
     } else if (op.op === 'update' && op.target === 'field') {
       const fieldName = op.name
@@ -76,7 +79,7 @@ function buildPatchDiffSummary(schema: any, patch: Patch | null): DiffItem[] {
       items.push({
         key: `update-${index}`,
         type: 'update',
-        text: `修改字段：${existingField?.label || fieldName}（${changeDetails}）`
+        text: t('patch.status.update', { name: existingField?.label || fieldName, props: changeDetails })
       })
     } else if (op.op === 'update' && op.target === 'schema') {
       const changes = op.value || {}
@@ -89,7 +92,7 @@ function buildPatchDiffSummary(schema: any, patch: Patch | null): DiffItem[] {
       items.push({
         key: `update-schema-${index}`,
         type: 'update',
-        text: `修改 Schema（${changeDetails}）`
+        text: t('patch.status.update_schema', { props: changeDetails })
       })
     } else if (op.op === 'remove' && op.target === 'field') {
       const fieldName = op.name
@@ -97,7 +100,7 @@ function buildPatchDiffSummary(schema: any, patch: Patch | null): DiffItem[] {
       items.push({
         key: `remove-${index}`,
         type: 'remove',
-        text: `删除字段：${existingField?.label || fieldName}`
+        text: t('patch.status.remove', { name: existingField?.label || fieldName })
       })
     }
   })
@@ -106,9 +109,9 @@ function buildPatchDiffSummary(schema: any, patch: Patch | null): DiffItem[] {
 }
 
 function formatValue(val: any): string {
-  if (val === undefined || val === null) return '无'
-  if (typeof val === 'boolean') return val ? '是' : '否'
-  if (typeof val === 'string') return val || '空'
+  if (val === undefined || val === null) return t('common.reset')
+  if (typeof val === 'boolean') return val ? t('common.confirm') : t('common.cancel')
+  if (typeof val === 'string') return val || t('common.reset')
   return String(val)
 }
 
@@ -125,20 +128,20 @@ const isApplyDisabled = computed(() => appliedCount.value <= 0)
 
 function getOpText(op: any): string {
   if (op.op === 'add' && op.target === 'field') {
-    return `新增字段：${op.value?.label || op.value?.name || '未知'}（type=${op.value?.type || 'unknown'}）`
+    return t('patch.status.add', { name: `${op.value?.label || op.value?.name || t('common.error')}（type=${op.value?.type || 'unknown'}）` })
   }
   if (op.op === 'update' && op.target === 'field') {
     const changedProps = Object.keys(op.value || {}).join('、')
-    return `修改字段：${op.name}（修改了：${changedProps}）`
+    return t('patch.status.update', { name: op.name, props: changedProps })
   }
   if (op.op === 'update' && op.target === 'schema') {
     const changedProps = Object.keys(op.value || {}).join('、')
-    return `修改 Schema（修改了：${changedProps}）`
+    return t('patch.status.update_schema', { props: changedProps })
   }
   if (op.op === 'remove' && op.target === 'field') {
-    return `删除字段：${op.name}`
+    return t('patch.status.remove', { name: op.name })
   }
-  return `未知操作：${op.op}`
+  return `${t('common.error')}：${op.op}`
 }
 
 const isVersionMismatch = computed(() => {
@@ -160,7 +163,7 @@ const patchItems = computed(() => {
       return {
         key: `add-${index}`,
         type: 'add_field',
-        text: `新增字段：${op.value?.label || op.value?.name || '未知'}（type=${op.value?.type || 'unknown'}）`
+        text: t('patch.status.add', { name: `${op.value?.label || op.value?.name || t('common.error')}（type=${op.value?.type || 'unknown'}）` })
       }
     }
     if (op.op === 'update' && op.target === 'field') {
@@ -168,7 +171,7 @@ const patchItems = computed(() => {
       return {
         key: `update-${index}`,
         type: 'update_field',
-        text: `修改字段：${op.name}（修改了：${changedProps}）`
+        text: t('patch.status.update', { name: op.name, props: changedProps })
       }
     }
     if (op.op === 'update' && op.target === 'schema') {
@@ -176,20 +179,20 @@ const patchItems = computed(() => {
       return {
         key: `update-schema-${index}`,
         type: 'update_schema',
-        text: `修改 Schema（修改了：${changedProps}）`
+        text: t('patch.status.update_schema', { props: changedProps })
       }
     }
     if (op.op === 'remove' && op.target === 'field') {
       return {
         key: `remove-${index}`,
         type: 'remove_field',
-        text: `删除字段：${op.name}`
+        text: t('patch.status.remove', { name: op.name })
       }
     }
     return {
       key: `unknown-${index}`,
       type: 'unknown',
-      text: `未知操作：${op.op}`
+      text: `${t('common.error')}：${op.op}`
     }
   })
 })
@@ -227,10 +230,10 @@ function handleCancel() {
           <span class="sparkle">✦</span>
         </div>
         <div class="header-text">
-          <h3>请确认以下变更</h3>
-          <p class="subtitle">以下变更将应用到当前 Schema</p>
+          <h3>{{ t('patch.confirm_title') }}</h3>
+          <p class="subtitle">{{ t('patch.confirm_subtitle') }}</p>
           <p class="meta" v-if="props.patch && props.schema">
-            Patch 基于版本：{{ patchBaseVersion }} · 当前 Schema 版本：{{ schemaCurrentVersion }}
+            {{ t('patch.version_info', { base: patchBaseVersion, current: schemaCurrentVersion }) }}
           </p>
         </div>
         <button class="close-btn" @click="handleCancel">×</button>
@@ -238,13 +241,13 @@ function handleCancel() {
 
       <!-- 版本警示（若 patch 基于的版本与当前 schema 不符） -->
       <div class="version-alert" v-if="isVersionMismatch">
-        <NAlert show-icon type="warning" title="版本不匹配">
-          <div>该 Patch 基于的版本与当前 Schema 不一致，应用前请确认或重新生成 Patch。</div>
+        <NAlert show-icon type="warning" :title="t('patch.reason.version_mismatch')">
+          <div>{{ t('patch.reason.version_mismatch') }}</div>
         </NAlert>
       </div>
       <!-- 变更摘要区块 -->
       <div class="diff-summary">
-        <div class="section-title">变更摘要</div>
+        <div class="section-title">{{ t('history.title') }}</div>
         <ul v-if="diffItems.length > 0" class="summary-list">
           <li
             v-for="item in diffItems"
@@ -255,21 +258,21 @@ function handleCancel() {
             {{ item.text }}
           </li>
         </ul>
-        <p v-else class="empty-hint">未检测到任何有效修改</p>
+        <p v-else class="empty-hint">{{ t('patch.no_changes') }}</p>
       </div>
 
       <!-- 操作决策列表 -->
       <div class="decision-summary" style="padding: 12px 20px; border-bottom: 1px solid rgba(99,102,241,0.06); display:flex; gap:12px; align-items:center;">
         <div style="display:flex; gap:8px; align-items:center;">
-          <div style="background:#ecfdf5; color:#16a34a; padding:6px 10px; border-radius:8px; font-weight:600;">将应用 {{ appliedCount }} 条</div>
-          <div style="background:#fff7ed; color:#d97706; padding:6px 10px; border-radius:8px; font-weight:600;">将跳过 {{ skippedCount }} 条</div>
+          <div style="background:#ecfdf5; color:#16a34a; padding:6px 10px; border-radius:8px; font-weight:600;">{{ t('patch.applied_count', { count: appliedCount }) }}</div>
+          <div style="background:#fff7ed; color:#d97706; padding:6px 10px; border-radius:8px; font-weight:600;">{{ t('message.skipped', { count: skippedCount }) }}</div>
         </div>
-        <div style="margin-left:auto; color:#64748b; font-size:13px;">按操作顺序展示</div>
+        <div style="margin-left:auto; color:#64748b; font-size:13px;">{{ t('common.history') }}</div>
       </div>
 
       <!-- Patch 操作详情 -->
       <div class="patch-list">
-        <div class="section-title">Patch 操作详情</div>
+        <div class="section-title">{{ t('patch.confirm_title') }}</div>
         <template v-if="validation && (validation.validOps.length > 0 || validation.invalidOps.length > 0)">
           <!-- Valid operations -->
           <div
@@ -297,18 +300,18 @@ function handleCancel() {
             <div style="flex:1">
               <div class="op-text">{{ getOpText(invalid.op) }}</div>
               <div style="font-size:12px; color:#b45309; margin-top:6px;">
-                跳过原因：{{ invalid.reason }}
+                {{ t('message.skipped', { count: '' }) }}{{ t('common.error') }}：{{ invalid.reason.startsWith('patch.reason.') ? t(invalid.reason) : invalid.reason }}
               </div>
             </div>
           </div>
         </template>
-        <p v-else class="empty">暂无操作</p>
+        <p v-else class="empty">{{ t('history.empty') }}</p>
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-ghost" @click="handleCancel">取消</button>
+        <button class="btn btn-ghost" @click="handleCancel">{{ t('common.cancel') }}</button>
         <button class="btn btn-primary" :disabled="isApplyDisabled" @click="handleConfirm">
-          Apply ({{ appliedCount }}) 
+          {{ t('common.confirm') }} ({{ appliedCount }}) 
         </button>
       </div>
     </div>

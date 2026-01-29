@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { NModal } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   show: boolean
@@ -30,8 +33,8 @@ function handleClose() {
           <span class="warning-symbol">⚠️</span>
         </div>
         <div class="header-text">
-          <h3>Schema 版本冲突</h3>
-          <p class="subtitle">检测到版本不一致，无法安全应用修改</p>
+          <h3>{{ t('history.mismatch_title') }}</h3>
+          <p class="subtitle">{{ t('history.mismatch_subtitle') }}</p>
         </div>
         <button class="close-btn" @click="handleClose">×</button>
       </div>
@@ -39,11 +42,11 @@ function handleClose() {
       <div class="version-info">
         <div class="version-comparison">
           <div class="version-item">
-            <span class="version-label">当前 Schema 版本</span>
+            <span class="version-label">{{ (t('patch.version_info', { base: '', current: '' }).split('·')[1] || '').trim().split('：')[0] }}</span>
             <span class="version-value current">{{ info.current }}</span>
           </div>
           <div class="version-item">
-            <span class="version-label">Patch 基于版本</span>
+            <span class="version-label">{{ (t('patch.version_info', { base: '', current: '' }).split('·')[0] || '').trim().split('：')[0] }}</span>
             <span class="version-value base">{{ info.base }}</span>
           </div>
         </div>
@@ -51,27 +54,22 @@ function handleClose() {
 
       <div class="warning-content">
         <div class="warning-section">
-          <h4>问题原因</h4>
-          <p>在 AI 生成修改期间，Schema 已被手动修改，导致版本不匹配。</p>
+          <h4>{{ t('history.mismatch_reason_title') }}</h4>
+          <p>{{ t('history.mismatch_reason') }}</p>
         </div>
 
         <div class="warning-section">
-          <h4>建议操作</h4>
+          <h4>{{ t('history.mismatch_suggest_title') }}</h4>
           <ul class="suggestion-list">
-            <li>重新提交修改请求（推荐）</li>
-            <li>或手动对比并合并差异后再尝试应用</li>
+            <li>{{ t('history.mismatch_suggest_1') }}</li>
+            <li>{{ t('history.mismatch_suggest_2') }}</li>
           </ul>
-        </div>
-
-        <div class="warning-section">
-          <h4>安全保障</h4>
-          <p>失败的 Patch 不会改变当前 Schema，也不会写入历史记录。</p>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn btn-primary" @click="handleClose">
-          知道了
+          {{ t('common.confirm') }}
         </button>
       </div>
     </div>
