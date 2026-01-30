@@ -2,6 +2,9 @@
 // @ts-nocheck
 import { ref, watch, nextTick, computed } from 'vue'
 import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog } from 'naive-ui'
+import { Codemirror } from 'vue-codemirror'
+import { json } from '@codemirror/lang-json'
+import { oneDark } from '@codemirror/theme-one-dark'
 // @ts-ignore vue shim
 import PromptInput from './components/PromptInput.vue'
 // @ts-ignore vue shim
@@ -31,6 +34,10 @@ import { applyPatchPartial } from './utils/applyPatchPartial'
 
 
 const promptInputRef = ref<any>(null) // 用于获取 PromptInput 组件实例
+
+// CodeMirror 扩展配置
+const editorExtensions = [json()]
+
 const themeOverrides = {
   common: {
     primaryColor: '#6366f1',
@@ -907,23 +914,6 @@ function handleFileSelect(event: Event) {
 <template>
   <NConfigProvider :theme-overrides="themeOverrides">
     <main class="layout">
-      <!-- 语言切换器 -->
-      <div class="lang-switcher">
-        <div class="segmented-control">
-          <button 
-            :class="{ active: locale === 'zh' }" 
-            @click="changeLocale('zh')"
-          >
-            中
-          </button>
-          <button 
-            :class="{ active: locale === 'en' }" 
-            @click="changeLocale('en')"
-          >
-            EN
-          </button>
-        </div>
-      </div>
       <PromptInput ref="promptInputRef" :on-generate="handleGenerate" :has-schema="!!schema" :phase="generatePhase"
         @generate="handleGenerate" />
 
@@ -1007,7 +997,17 @@ function handleFileSelect(event: Event) {
               <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileSelect" />
             </div>
           </div>
-          <NInput :value="schemaText" type="textarea" :placeholder="t('editor.placeholder')" class="schema-input" @update:value="(val) => schemaText = val" />
+          <div class="editor-container">
+            <Codemirror
+              v-model="schemaText"
+              :placeholder="t('editor.placeholder')"
+              :style="{ height: '100%' }"
+              :autofocus="true"
+              :indent-with-tab="true"
+              :tab-size="2"
+              :extensions="editorExtensions"
+            />
+          </div>
           <NAlert v-if="parseError" type="error" class="alert">
             {{ t('editor.parse_error') }}{{ parseError }}
           </NAlert>
@@ -1102,43 +1102,7 @@ function handleFileSelect(event: Event) {
   position: relative;
 }
 
-.lang-switcher {
-  position: absolute;
-  top: 16px;
-  right: 24px;
-  z-index: 100;
-}
-
-.segmented-control {
-  display: flex;
-  background: #f1f5f9;
-  padding: 2px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.segmented-control button {
-  border: none;
-  background: transparent;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 40px;
-}
-
-.segmented-control button:hover {
-  color: #0f172a;
-}
-
-.segmented-control button.active {
-  background: #ffffff;
-  color: #6366f1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-}
+/* App Header Styles Removed - Merged into PromptInput */
 
 .panel {
   background: #ffffff;
@@ -1250,26 +1214,28 @@ h2 {
   overflow: auto;
 }
 
-.schema-input {
+.editor-container {
+  flex: 1;
+  min-height: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* CodeMirror 深度样式覆盖 */
+:deep(.vue-codemirror) {
   height: 100%;
 }
 
-.schema-input :deep(textarea) {
+:deep(.cm-editor) {
   height: 100% !important;
-  min-height: 280px;
-  border-radius: 10px;
-  background: #ffffff;
-  font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 13px;
-  transition: border-color 0.15s;
 }
 
-.schema-input :deep(textarea):focus {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.06);
+:deep(.cm-scroller) {
+  overflow: auto;
 }
-
-
 
 .alert {
   margin-top: 4px;

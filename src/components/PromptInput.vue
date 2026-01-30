@@ -1,10 +1,15 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, computed } from 'vue'
-import { NCard, NInput, NButton, NSpace } from 'naive-ui'
+import { NCard, NInput, NButton, NSpace, NTag } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+function changeLocale(lang: 'zh' | 'en') {
+  locale.value = lang
+  localStorage.setItem('locale', lang)
+}
 
 type GeneratePhase = 'idle' | 'classifying' | 'generating' | 'patching' | 'applying' | 'done' | 'error'
 
@@ -96,6 +101,22 @@ const handleFillExample = () => {
   userPrompt.value = examplePrompts.value[randomIndex]
 }
 
+// 智能建议指令
+const magicCommands = computed(() => [
+  { icon: '✨', label: locale.value === 'zh' ? '优化文案' : 'Optimize labels', cmd: locale.value === 'zh' ? '优化表单的标题和字段文案，使其更专业' : 'Optimize all labels and titles to be more professional' },
+  { icon: '🛡️', label: locale.value === 'zh' ? '设为必填' : 'Make Required', cmd: locale.value === 'zh' ? '将所有关键字段设为必填' : 'Make all critical fields required' },
+  { icon: '📱', label: locale.value === 'zh' ? '增加手机号' : 'Add Phone', cmd: locale.value === 'zh' ? '增加一个手机号字段，带格式校验' : 'Add a phone field with validation' },
+  { icon: '🎨', label: locale.value === 'zh' ? '美化标题' : 'Prettify Title', cmd: locale.value === 'zh' ? '给表单起一个更有吸引力的标题和描述' : 'Give this form a more attractive title and description' }
+])
+
+const applyMagicCommand = (cmd: string) => {
+  if (userPrompt.value.trim()) {
+    userPrompt.value += ` (${cmd})`
+  } else {
+    userPrompt.value = cmd
+  }
+}
+
 // 计算 placeholder 文本
 const inputPlaceholder = computed(() => {
   return t('prompt.placeholder')
@@ -109,8 +130,24 @@ defineExpose({
 <template>
   <NCard class="prompt-card" :bordered="true">
     <div class="prompt-header">
-      <h1 class="prompt-title">{{ t('common.title') }}</h1>
-      <p class="prompt-subtitle">{{ t('common.subtitle') }}</p>
+      <div class="header-left">
+        <img src="/axiomschema.svg" class="logo" alt="Logo" />
+        <div class="brand">
+          <div class="brand-top">
+            <h1 class="prompt-title">AxiomSchema</h1>
+            <span class="version-tag">v2.0</span>
+          </div>
+          <p class="prompt-subtitle">{{ t('common.subtitle') }}</p>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- 语言切换 -->
+        <div class="segmented-control">
+          <button :class="{ active: locale === 'zh' }" @click="changeLocale('zh')">中</button>
+          <button :class="{ active: locale === 'en' }" @click="changeLocale('en')">EN</button>
+        </div>
+      </div>
     </div>
     
     <div class="prompt-input-section">
@@ -118,11 +155,29 @@ defineExpose({
         :value="userPrompt"
         type="textarea"
         :placeholder="inputPlaceholder"
-        :rows="5"
+        :rows="3"
         class="prompt-textarea"
         @update:value="(val) => userPrompt = val"
         @keydown="handleKeydown"
       />
+      <!-- 智能建议标签 -->
+      <div class="magic-commands" v-if="props.hasSchema">
+        <span class="magic-label">🪄 {{ locale === 'zh' ? '魔法指令：' : 'Magic:' }}</span>
+        <div class="magic-tags">
+          <NTag 
+            v-for="m in magicCommands" 
+            :key="m.label" 
+            size="small" 
+            round 
+            checkable 
+            @click="applyMagicCommand(m.cmd)"
+            class="magic-tag"
+          >
+            <template #icon>{{ m.icon }}</template>
+            {{ m.label }}
+          </NTag>
+        </div>
+      </div>
     </div>
 
     <div class="prompt-status">
@@ -166,30 +221,123 @@ defineExpose({
 }
 
 .prompt-header {
-  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+  transition: transform 0.3s ease;
+}
+
+.header-left:hover .logo {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .prompt-title {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.version-tag {
+  font-size: 9px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 .prompt-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: 11px;
   color: #64748b;
-  line-height: 1.5;
+  line-height: 1.2;
+}
+
+.segmented-control {
+  display: flex;
+  background: #f1f5f9;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.segmented-control button {
+  border: none;
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.segmented-control button.active {
+  background: #ffffff;
+  color: #6366f1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .prompt-input-section {
   margin-bottom: 12px;
 }
 
+.magic-commands {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.magic-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.magic-tags {
+  display: flex;
+  gap: 4px;
+}
+
+.magic-tag {
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .prompt-status {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .status-text {
