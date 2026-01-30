@@ -41,28 +41,33 @@ Most AI form builders stop at "Generate once," "Screenshot and done," or "Regene
 - Forms are rendered dynamically from `schema.fields`.
 - Supported field types: `string`, `number`, `boolean`, `select (enum)`.
 
-#### 3. Two-Way Editable Schema with Safety Guards
-- **Live Form Preview**: Instant feedback as the schema changes in the raw JSON editor.
+#### 3. Professional JSON Editor (CodeMirror)
+- **Developer-Grade Experience**: Integrated **CodeMirror** for high-performance JSON editing with syntax highlighting, line numbers, and real-time linting.
 - **Validation-First**: Invalid JSON never breaks the UI; the last valid state is always preserved.
 
-#### 4. Field-Level Editor (Human-in-the-Loop)
-- Click any field to open a drawer editor for labels, descriptions, required status, defaults, and enum options.
+#### 4. Visual Diff & History
+- **Side-by-Side Diff**: Compare Schema changes visually with a professional diff viewer (powered by `vue-diff`).
+- **One-Click Recovery**: Stores history records with full snapshots for instant rollback.
+
+#### 5. Guided Quick Start (New)
+- **Scenario Templates**: High-frequency templates (Signup, CRM, E-commerce) available for one-click generation.
+- **Better Empty States**: Beautiful onboarding UI that guides users from zero to one.
+
+#### 6. Dark Mode & Responsive (New)
+- **Native Dark Mode**: Seamless dark mode support with automatic system sync.
+- **Mobile Optimized**: Fully responsive layout and touch-friendly controls for on-the-go editing.
+
+#### 7. AI Patch System (Core Highlight)
+- **Intent Classification**: AI classifies intent as `FULL_GENERATE`, `PATCH_UPDATE`, etc., to prevent accidental rewrites.
+- **Incremental Updates**: Returns **only patch operations** (`add`, `update`, `remove`), preserving manual edits and saving costs.
+
+#### 8. Field-Level Editor (Human-in-the-Loop)
+- Click any field to open a drawer editor for labels, descriptions, required status, and enum options.
 - Supports immediate apply, cancel/rollback, and single-field reset.
 
-#### 5. Schema Import / Export (Closed Loop)
-- **Export**: Copy JSON or download as `.json`.
-- **Import**: Paste JSON or upload files with strict validation guards.
-
-#### 6. AI Patch System (Core Highlight)
-- **Intent Classification**: Before generation, AI classifies user intent as `FULL_GENERATE`, `PATCH_UPDATE`, `REGENERATE`, or `UNKNOWN`. This prevents accidental full rewrites.
-- **Incremental Updates**: For `PATCH_UPDATE`, AI returns **only patch operations** (`add`, `update`, `remove`), saving tokens and preserving manual edits.
-- **Patch Preview & Diff**: A semantic summary and raw operations are presented for explicit confirmation.
-- **History & Rollback**: Stores history records with snapshots for one-click recovery.
-
-#### 7. Full-Stack i18n (New)
-- **Language-Aware AI**: The AI logic detects user language (via `X-Locale` header) and ensures generated `patchSummary`, `labels`, and `reasoning` match the UI language.
-- **Dynamic UI**: Seamless switching between English and Chinese with a modern segmented control.
-- **Type-Safe Translations**: Built with `vue-i18n@11` for robust multi-language support.
+#### 9. Full-Stack i18n
+- **Language-Aware AI**: AI logic detects user locale and generates `labels` and `reasoning` in the matching language.
+- **Seamless Switching**: Switch between English and Chinese with instant UI and AI logic updates.
 
 ### 🔄 System Workflow
 
@@ -201,28 +206,33 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 - 表单完全由 `schema.fields` 动态渲染。
 - 支持 `string`, `number`, `boolean`, `select` 等字段类型。
 
-#### 3. Schema 双向可编辑 + 安全兜底
-- **实时预览**：在 JSON 编辑区修改 Schema，右侧表单即刻看到效果。
+#### 3. 专业级 JSON 编辑器 (CodeMirror)
+- **开发者体验**：集成 **CodeMirror** 实现高性能 JSON 编辑，支持语法高亮、行号显示及实时错误提示。
 - **校验优先**：非法 JSON 不会破坏界面，始终保留最近一次合法状态。
 
-#### 4. 字段级编辑器（人类参与）
-- 点击字段打开抽屉，编辑 label、描述、必填、默认值及枚举项。
-- 支持即时生效、取消回滚及单字段重置。
+#### 4. 可视化 Diff 与历史记录
+- **侧边栏对比**：通过专业的 Diff 查看器（基于 `vue-diff`）直观对比 Schema 变更。
+- **一键回滚**：记录完整的变更快照，支持随时恢复到历史任一版本。
 
-#### 5. Schema 导入 / 导出（闭环）
-- **导出**：复制 JSON 或下载 `.json` 文件。
-- **导入**：粘贴 JSON 或上传文件，带严格校验。
+#### 5. 引导式快速开始 (新增)
+- **场景模板**：提供注册表单、CRM、电商评价等高频模板，点击即可一键生成。
+- **空状态优化**：美观的引导界面，帮助新用户快速上手。
 
-#### 6. AI Patch 机制（核心亮点）
-- **意图识别**：在生成前判断是“全量生成”、“增量修改”、“推翻重做”还是“无法识别”。避免误触发全量重写。
-- **增量更新**：对于增量修改，AI 仅返回 **Patch 操作**（add, update, remove），节省 Token 并保护手动编辑。
-- **预览与 Diff**：展示语义化摘要和原始操作，由用户显式确认。
-- **历史与回滚**：记录变更快照，支持一键恢复到历史状态。
+#### 6. 深色模式与移动端适配 (新增)
+- **原生深色模式**：完美适配深色主题，支持随系统自动切换。
+- **移动端优化**：全响应式布局，针对手机端触控操作进行了深度优化。
 
-#### 7. 全栈国际化支持 (新增)
-- **语言感知 AI**：AI 逻辑能够识别用户语言环境（通过 `X-Locale` 请求头），确保生成的 `patchSummary`、`label` 和推理过程与 UI 语言完全一致。
-- **动态 UI 切换**：通过现代化的分段控制器（Segmented Control）在中文和英文之间无缝切换。
-- **强类型翻译**：基于 `vue-i18n@11` 构建，支持完善的多语言类型安全。
+#### 7. AI Patch 机制（核心亮点）
+- **意图识别**：智能判断“全量”或“增量”修改，避免误操作。
+- **增量更新**：仅返回 **Patch 操作**，节省 Token 并保护手动编辑成果。
+
+#### 8. 字段级编辑器（人类参与）
+- 点击字段即可打开抽屉，编辑 Label、必填项、默认值及枚举。
+- 支持即时生效、回滚及单字段重置。
+
+#### 9. 全栈国际化
+- **语言感知 AI**：AI 自动识别环境语言，生成的摘要与推理过程与 UI 保持一致。
+- **无缝切换**：中英文一键切换，实时更新 UI 与 AI 逻辑。
 
 ### 🔄 系统工作流程
 
