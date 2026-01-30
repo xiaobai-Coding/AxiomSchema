@@ -59,6 +59,11 @@ Most AI form builders stop at "Generate once," "Screenshot and done," or "Regene
 - **Patch Preview & Diff**: A semantic summary and raw operations are presented for explicit confirmation.
 - **History & Rollback**: Stores history records with snapshots for one-click recovery.
 
+#### 7. Full-Stack i18n (New)
+- **Language-Aware AI**: The AI logic detects user language (via `X-Locale` header) and ensures generated `patchSummary`, `labels`, and `reasoning` match the UI language.
+- **Dynamic UI**: Seamless switching between English and Chinese with a modern segmented control.
+- **Type-Safe Translations**: Built with `vue-i18n@11` for robust multi-language support.
+
 ### 🔄 System Workflow
 
 The system follows a rigorous "Reasoning -> Validation -> Execution" pipeline:
@@ -119,8 +124,9 @@ All AI requests go through `/api/ai` to ensure:
 
 ### � Architecture Philosophy
 
-- **Schema as Single Source of Truth**: AI and UI both sync to the same state.
+- **Schema as Single Source of Truth**: AI, UI, and even multi-language logic both sync to the same state.
 - **AI Proposes, System Validates**: AI is for reasoning; the system is for execution and safety.
+- **Language-Aware Reasoning**: i18n is not just for UI strings, but also for AI thought processes.
 - **Validation-First, Human-in-the-Loop**: Never trust AI output blindly.
 - **Patch-based Evolution**: Incremental changes are superior to full regeneration.
 
@@ -213,6 +219,11 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 - **预览与 Diff**：展示语义化摘要和原始操作，由用户显式确认。
 - **历史与回滚**：记录变更快照，支持一键恢复到历史状态。
 
+#### 7. 全栈国际化支持 (新增)
+- **语言感知 AI**：AI 逻辑能够识别用户语言环境（通过 `X-Locale` 请求头），确保生成的 `patchSummary`、`label` 和推理过程与 UI 语言完全一致。
+- **动态 UI 切换**：通过现代化的分段控制器（Segmented Control）在中文和英文之间无缝切换。
+- **强类型翻译**：基于 `vue-i18n@11` 构建，支持完善的多语言类型安全。
+
 ### 🔄 系统工作流程
 
 系统遵循严格的“推理 -> 校验 -> 执行”管线：
@@ -273,8 +284,9 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 
 ### 📐 设计理念
 
-- **Schema 是唯一事实源**：AI 与 UI 始终同步于同一状态。
+- **Schema 是唯一事实源**：AI、UI 甚至多语言逻辑均同步于同一状态。
 - **AI 负责“建议”，系统负责“执行”**：AI 提供推理，系统负责安全与落地。
+- **全链路语言对齐**：国际化不仅是 UI 文案，更是 AI 推理与生成的全链路对齐。
 - **校验优先，人类参与**：绝不盲目信任 AI 输出。
 - **以增量演进代替全量重写**：保护用户心智与 Token 成本。
 
