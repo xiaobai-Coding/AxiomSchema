@@ -8,20 +8,48 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Theme variables */
+  --bg-color: #eef2ff;
+  --text-color: #0f172a;
+  --card-bg: #ffffff;
+  --border-color: rgba(99, 102, 241, 0.08);
+}
+
+html.dark {
+  --bg-color: #0f172a;
+  --text-color: #f1f5f9;
+  --card-bg: #1e293b;
+  --border-color: rgba(255, 255, 255, 0.1);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background-color: var(--bg-color);
+  transition: background-color 0.3s;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08), transparent 25%),
-    radial-gradient(circle at 90% 10%, rgba(56, 189, 248, 0.08), transparent 20%),
-    #eef2ff;
-  color: #0f172a;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  transition: background-color 0.3s, color 0.3s;
+  background-attachment: fixed;
+}
+
+html:not(.dark) body {
+  background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08), transparent 25%),
+    radial-gradient(circle at 90% 10%, rgba(56, 189, 248, 0.08), transparent 20%);
+}
+
+html.dark body {
+  background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.1), transparent 25%);
 }
 
 a {
@@ -33,7 +61,7 @@ a {
   max-width: 1200px;
   margin: 0 auto;
   padding: 28px 20px;
-  height: 100vh;
+  /* height: 100vh; */
 }
 
 button {

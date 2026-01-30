@@ -15,7 +15,9 @@
     "loading": "处理中...",
     "error": "错误",
     "success": "成功",
-    "warning": "警告"
+    "warning": "警告",
+    "dark": "深色模式",
+    "light": "浅色模式"
   },
   "prompt": {
     "placeholder": "描述你的表单需求，AI 将为你生成 Schema\n\n例如：\n• 创建一个注册表单：姓名、邮箱、手机号\n• 在当前表单中新增一个\"手机号\"字段，必填",

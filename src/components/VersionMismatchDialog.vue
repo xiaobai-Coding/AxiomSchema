@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { NModal } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
+import { useDark } from '@vueuse/core'
 
 const { t } = useI18n()
+const isDark = useDark()
 
 const props = defineProps<{
   show: boolean
@@ -27,7 +29,7 @@ function handleClose() {
       emit('update:show', val)
     }"
   >
-    <div class="warning-modal">
+    <div class="warning-modal" :class="{ 'is-dark': isDark }">
       <div class="modal-header">
         <div class="warning-icon">
           <span class="warning-symbol">⚠️</span>
@@ -79,13 +81,18 @@ function handleClose() {
 <style scoped>
 .warning-modal {
   width: 480px;
-  background: linear-gradient(145deg, #ffffff 0%, #fef7f7 100%);
+  background: #ffffff;
   border-radius: 20px;
   border: 1px solid rgba(239, 68, 68, 0.15);
-  box-shadow:
-    0 25px 50px -12px rgba(239, 68, 68, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  box-shadow: 0 25px 50px -12px rgba(239, 68, 68, 0.25);
   overflow: hidden;
+  transition: background-color 0.3s;
+}
+
+.warning-modal.is-dark {
+  background: #1e293b;
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -93,9 +100,13 @@ function handleClose() {
   align-items: flex-start;
   gap: 12px;
   padding: 10px 20px 16px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 101, 101, 0.05) 100%);
+  background: rgba(239, 68, 68, 0.05);
   border-bottom: 1px solid rgba(239, 68, 68, 0.1);
   position: relative;
+}
+
+.is-dark .modal-header {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .warning-icon {
@@ -130,6 +141,10 @@ function handleClose() {
   font-size: 16px;
   font-weight: 700;
   color: #0f172a;
+}
+
+.is-dark .header-text h3 {
+  color: #f1f5f9;
 }
 
 .subtitle {
@@ -227,11 +242,19 @@ function handleClose() {
   color: #0f172a;
 }
 
+.is-dark .warning-section h4 {
+  color: #f1f5f9;
+}
+
 .warning-section p {
   margin: 0;
   font-size: 13px;
   color: #475569;
   line-height: 1.5;
+}
+
+.is-dark .warning-section p {
+  color: #94a3b8;
 }
 
 .suggestion-list {
@@ -246,6 +269,10 @@ function handleClose() {
   line-height: 1.5;
   position: relative;
   padding-left: 8px;
+}
+
+.is-dark .suggestion-list li {
+  color: #94a3b8;
 }
 
 .suggestion-list li::before {
@@ -266,8 +293,12 @@ function handleClose() {
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  background: #fef7f7;
+  background: rgba(239, 68, 68, 0.02);
   border-top: 1px solid rgba(239, 68, 68, 0.1);
+}
+
+.is-dark .modal-footer {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .btn {

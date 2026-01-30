@@ -2,8 +2,10 @@
 import { computed } from 'vue'
 import { NModal, NAlert } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
+import { useDark } from '@vueuse/core'
 
 const { t } = useI18n()
+const isDark = useDark()
 
 interface PatchOperation {
   op: 'add' | 'update' | 'remove'
@@ -224,7 +226,7 @@ function handleCancel() {
       }
     }"
   >
-    <div class="ai-modal">
+    <div class="ai-modal" :class="{ 'is-dark': isDark }">
       <div class="modal-header">
         <div class="ai-icon">
           <span class="sparkle">✦</span>
@@ -321,13 +323,18 @@ function handleCancel() {
 <style scoped>
 .ai-modal {
   width: 420px;
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: #ffffff;
   border-radius: 20px;
   border: 1px solid rgba(99, 102, 241, 0.15);
-  box-shadow:
-    0 25px 50px -12px rgba(99, 102, 241, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
   overflow: hidden;
+  transition: background-color 0.3s;
+}
+
+.ai-modal.is-dark {
+  background: #1e293b;
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -335,9 +342,13 @@ function handleCancel() {
   align-items: flex-start;
   gap: 12px;
   padding: 10px 20px 16px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+  background: rgba(99, 102, 241, 0.05);
   border-bottom: 1px solid rgba(99, 102, 241, 0.1);
   position: relative;
+}
+
+.is-dark .modal-header {
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .ai-icon {
@@ -372,6 +383,10 @@ function handleCancel() {
   font-size: 16px;
   font-weight: 700;
   color: #0f172a;
+}
+
+.is-dark .header-text h3 {
+  color: #f1f5f9;
 }
 
 .subtitle {
@@ -418,6 +433,11 @@ function handleCancel() {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   transition: all 0.2s;
+}
+
+.is-dark .patch-item {
+  background: #0f172a;
+  border-color: #334155;
 }
 
 .patch-item:hover {
@@ -473,6 +493,10 @@ function handleCancel() {
   line-height: 1.4;
 }
 
+.is-dark .op-text {
+  color: #f1f5f9;
+}
+
 /* 变更摘要区块样式 */
 .diff-summary {
   padding: 16px 20px 8px;
@@ -503,6 +527,11 @@ function handleCancel() {
   padding: 6px 10px;
   border-radius: 6px;
   background: #f8fafc;
+}
+
+.is-dark .summary-list li {
+  background: #0f172a;
+  color: #cbd5e1;
 }
 
 .summary-list li .prefix {
@@ -559,6 +588,10 @@ function handleCancel() {
   padding: 16px 20px;
   background: #f8fafc;
   border-top: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.is-dark .modal-footer {
+  background: #111827;
 }
 
 .btn {

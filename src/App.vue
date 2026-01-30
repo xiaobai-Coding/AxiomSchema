@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, watch, nextTick, computed } from 'vue'
-import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog } from 'naive-ui'
+import { ref, watch, nextTick, computed, onMounted } from 'vue'
+import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog, darkTheme } from 'naive-ui'
+import { useDark, useToggle } from '@vueuse/core'
 import { Codemirror } from 'vue-codemirror'
 import { json } from '@codemirror/lang-json'
 import { oneDark } from '@codemirror/theme-one-dark'
@@ -35,10 +36,20 @@ import { applyPatchPartial } from './utils/applyPatchPartial'
 
 const promptInputRef = ref<any>(null) // 用于获取 PromptInput 组件实例
 
-// CodeMirror 扩展配置
-const editorExtensions = [json()]
+// --- 深色模式支持 ---
+const isDark = useDark()
+const toggleDark = useToggle(isDark)
 
-const themeOverrides = {
+// CodeMirror 扩展配置
+const editorExtensions = computed(() => {
+  const exts = [json()]
+  if (isDark.value) {
+    exts.push(oneDark)
+  }
+  return exts
+})
+
+const themeOverrides = computed(() => ({
   common: {
     primaryColor: '#6366f1',
     primaryColorHover: '#818cf8',
@@ -46,12 +57,13 @@ const themeOverrides = {
     primaryColorSuppl: '#818cf8',
     borderRadius: '10px',
     borderRadiusSmall: '8px',
-    borderRadiusLarge: '12px'
+    borderRadiusLarge: '12px',
+    textColorBase: isDark.value ? '#f1f5f9' : '#0f172a'
   },
   Form: {
     labelFontSize: '14px',
     labelFontWeight: '600',
-    labelTextColor: '#0f172a',
+    labelTextColor: isDark.value ? '#f1f5f9' : '#0f172a',
     labelLineHeight: '1.6'
   },
   Input: {
@@ -76,7 +88,7 @@ const themeOverrides = {
     railColorActive: '#6366f1',
     buttonColor: '#ffffff'
   }
-}
+}))
 function ensureSchemaVersion(s: any, forceInit = false) {
   if (!s) return null
   const next = JSON.parse(JSON.stringify(s))
@@ -912,8 +924,8 @@ function handleFileSelect(event: Event) {
 </script>
 
 <template>
-  <NConfigProvider :theme-overrides="themeOverrides">
-    <main class="layout">
+  <NConfigProvider :theme-overrides="themeOverrides" :theme="isDark ? darkTheme : null">
+    <main class="layout" :class="{ 'is-dark': isDark }">
       <PromptInput ref="promptInputRef" :on-generate="handleGenerate" :has-schema="!!schema" :phase="generatePhase"
         @generate="handleGenerate" />
 
@@ -1061,10 +1073,24 @@ function handleFileSelect(event: Event) {
                 </div>
                 <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
                   <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
+                  <NButton size="tiny" quaternary :type="showDiffId === record.id ? 'primary' : 'default'" @click="showDiffId = showDiffId === record.id ? null : record.id">
+                    {{ showDiffId === record.id ? t('common.cancel') : 'Diff' }}
+                  </NButton>
                   <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
                     <div style="color: #fff;">{{ t('history.rollback') }}</div>
                   </NButton>
                 </div>
+              </div>
+
+              <!-- Visual Diff 视图 -->
+              <div v-if="showDiffId === record.id" class="history-diff-viewer">
+                <Diff 
+                  mode="unified" 
+                  :old-content="JSON.stringify(record.beforeSchema || {}, null, 2)" 
+                  :new-content="JSON.stringify(record.afterSchema || {}, null, 2)" 
+                  language="json"
+                  :theme="isDark ? 'dark' : 'light'"
+                />
               </div>
 
               <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
@@ -1105,8 +1131,8 @@ function handleFileSelect(event: Event) {
 /* App Header Styles Removed - Merged into PromptInput */
 
 .panel {
-  background: #ffffff;
-  border: 1px solid rgba(99, 102, 241, 0.08);
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.08));
   border-radius: 16px;
   padding: 20px 20px 18px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
@@ -1114,6 +1140,7 @@ function handleFileSelect(event: Event) {
   flex-direction: column;
   gap: 14px;
   overflow: hidden;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 
@@ -1175,7 +1202,11 @@ function handleFileSelect(event: Event) {
 h2 {
   margin: 4px 0 0;
   font-size: 18px;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
+}
+
+.is-dark h2 {
+  color: #f1f5f9;
 }
 
 .hint {
@@ -1185,16 +1216,16 @@ h2 {
 
 .editor-panel {
   height: 70vh;
-  background: #fafbfc;
-  border-color: rgba(99, 102, 241, 0.06);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  background: var(--card-bg, #fafbfc);
+}
+
+.is-dark .editor-panel {
+  background: #1e293b;
 }
 
 .form-panel {
   height: 70vh;
-  background: #ffffff;
-  border-color: rgba(99, 102, 241, 0.05);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+  background: var(--card-bg, #ffffff);
 }
 
 .grid {
@@ -1202,6 +1233,7 @@ h2 {
   grid-template-columns: 11fr 9fr;
   gap: 20px;
   height: 100%;
+  position: relative;
 }
 
 .form-body {
@@ -1210,8 +1242,12 @@ h2 {
   padding: 16px;
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.5);
-  border: 1px solid rgba(99, 102, 241, 0.05);
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.05));
   overflow: auto;
+}
+
+.is-dark .form-body {
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .editor-container {
@@ -1246,6 +1282,70 @@ h2 {
   color: #94a3b8;
 }
 
+.empty-state-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(238, 242, 255, 0.6);
+  backdrop-filter: blur(4px);
+  border-radius: 16px;
+}
+
+.is-dark .empty-state-container {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.quick-start-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.15));
+  border-radius: 24px;
+  padding: 32px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 20px 50px rgba(99, 102, 241, 0.1);
+  animation: slideUp 0.4s ease-out;
+}
+
+.qs-header h3 {
+  font-size: 20px;
+  margin: 0 0 8px;
+  color: var(--text-color, #1e293b);
+}
+
+.qs-item {
+  padding: 20px;
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.1));
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  background: var(--bg-color, #f8fafc);
+}
+
+.is-dark .qs-item {
+  background: #1e293b;
+}
+
+.qs-item:hover {
+  background: var(--card-bg, #ffffff);
+  border-color: #6366f1;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.08);
+}
+
+.qs-text h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text-color, #0f172a);
+}
+
 /* Patch 历史记录样式（弱化显示） */
 .history-hint {
   font-size: 11px;
@@ -1275,15 +1375,23 @@ h2 {
 
 .history-item {
   padding: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.1));
   border-radius: 8px;
-  background: #fafbff;
+  background: var(--bg-color, #fafbff);
   transition: all 0.15s;
+}
+
+.is-dark .history-item {
+  background: #1e293b;
 }
 
 .history-item--latest {
   background: rgba(99, 102, 241, 0.04);
   border-color: rgba(99, 102, 241, 0.2);
+}
+
+.is-dark .history-item--latest {
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .history-item-header {
@@ -1296,7 +1404,7 @@ h2 {
 .history-item-summary {
   font-size: 14px;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
 }
 
 .history-item-time {
@@ -1381,7 +1489,7 @@ h2 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
 }
 
 .clarify-subtitle {

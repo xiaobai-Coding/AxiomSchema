@@ -1,10 +1,14 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, computed } from 'vue'
-import { NCard, NInput, NButton, NSpace, NTag } from 'naive-ui'
+import { NCard, NInput, NButton, NSpace, NTag, NTooltip } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
+import { useDark, useToggle } from '@vueuse/core'
 
 const { t, locale } = useI18n()
+
+const isDark = useDark()
+const toggleDark = useToggle(isDark)
 
 function changeLocale(lang: 'zh' | 'en') {
   locale.value = lang
@@ -142,6 +146,25 @@ defineExpose({
       </div>
       
       <div class="header-right">
+        <!-- 主题切换 -->
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton 
+              quaternary 
+              circle 
+              size="small" 
+              @click="toggleDark()"
+              class="theme-toggle"
+            >
+              <template #icon>
+                <span v-if="isDark">🌙</span>
+                <span v-else>☀️</span>
+              </template>
+            </NButton>
+          </template>
+          {{ isDark ? t('common.dark') || 'Dark' : t('common.light') || 'Light' }}
+        </NTooltip>
+
         <!-- 语言切换 -->
         <div class="segmented-control">
           <button :class="{ active: locale === 'zh' }" @click="changeLocale('zh')">中</button>
@@ -215,9 +238,14 @@ defineExpose({
 <style scoped>
 .prompt-card {
   padding: 24px;
-  background: linear-gradient(135deg, #fafbfc 0%, #ffffff 50%, #fafbfc 100%);
-  border: 1px solid rgba(99, 102, 241, 0.06);
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.06));
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+html:not(.dark) .prompt-card {
+  background: linear-gradient(135deg, #fafbfc 0%, #ffffff 50%, #fafbfc 100%);
 }
 
 .prompt-header {
@@ -282,12 +310,21 @@ defineExpose({
   line-height: 1.2;
 }
 
+html.dark .prompt-subtitle {
+  color: #94a3b8;
+}
+
 .segmented-control {
   display: flex;
   background: #f1f5f9;
   padding: 2px;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+html.dark .segmented-control {
+  background: #334155;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .segmented-control button {
@@ -300,12 +337,67 @@ defineExpose({
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 32px;
+}
+
+html.dark .segmented-control button {
+  color: #94a3b8;
 }
 
 .segmented-control button.active {
   background: #ffffff;
   color: #6366f1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+html.dark .segmented-control button.active {
+  background: #1e293b;
+  color: #818cf8;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: rotate(15deg);
+}
+
+/* 移动端适配 */
+@media (max-width: 600px) {
+  .prompt-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .segmented-control {
+    padding: 2px;
+  }
+
+  .segmented-control button {
+    padding: 4px 8px;
+    font-size: 11px;
+    height: 28px;
+  }
+
+  .brand-top .prompt-title {
+    font-size: 15px;
+  }
 }
 
 .prompt-input-section {
@@ -329,6 +421,7 @@ defineExpose({
 .magic-tags {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .magic-tag {
@@ -349,10 +442,15 @@ defineExpose({
 .prompt-textarea :deep(.n-input__textarea-el) {
   font-size: 14px;
   line-height: 1.6;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
   min-height: 120px;
-  background: #ffffff;
-  transition: border-color 0.15s;
+  background: var(--card-bg, #ffffff);
+  transition: border-color 0.15s, background-color 0.3s, color 0.3s;
+}
+
+html.dark .prompt-textarea :deep(.n-input__textarea-el) {
+  background: #0f172a;
+  color: #f1f5f9;
 }
 
 .prompt-textarea :deep(.n-input__textarea-el):focus {
