@@ -16,6 +16,8 @@ AxiomSchema is **not** a one-shot AI demo. It is a robust **engineering-oriented
 
 ### 📖 Introduction
 
+**AxiomSchema is an AI-Native SSOT (Single Source of Truth) Engine** specialized for generating and managing structured data definitions (JSON Schema) through natural language. It treats the schema as a Single Source of Truth and employs a **Surgical Patching** mechanism for precise, incremental updates.
+
 In the era of AI-driven development, most "Form Builders" focus on one-shot generation. However, real-world requirements are **iterative**. A user might say "add a phone field" or "make this field required" after the initial generation. 
 
 **AxiomSchema** solves this by treating AI as a "proposer" of changes (Patches) rather than a simple code generator. It implements a sophisticated workflow that ensures AI-generated modifications are safe, version-aware, and human-verified before being applied to the "Source of Truth" (the Schema).
@@ -121,19 +123,22 @@ These are real-world failure modes where most AI demos collapse. AxiomSchema han
 
 ### 🔒 Security & Deployment
 
+#### Global Deployment Strategy
+As an infrastructure-level tool, AxiomSchema requires high availability. It follows the same **Geo-DNS splitting logic as traceRAG**, ensuring that AI reasoning and JSON Patch generation remain fast and reliable regardless of the client's location.
+
 #### Serverless API Layer (Vercel)
 All AI requests go through `/api/ai` to ensure:
 - **API Keys** stay server-side.
 - **Rate Limiting** via Vercel KV (Redis) to prevent cost abuse.
 - **Client Token Validation** to block direct script access.
 
-### � Architecture Philosophy
+### 📐 Architecture Philosophy
 
 - **Schema as Single Source of Truth**: AI, UI, and even multi-language logic both sync to the same state.
+- **Surgical JSON Patching**: Instead of re-generating entire schemas, it produces incremental patches, preserving existing structural integrity.
+- **Intent Guardrails**: Uses the SSOT as a constraint to prevent "AI Hallucinations" when modifying critical fields (e.g., safety-critical parameters).
+- **Full i18n Stack**: Architected with `vue-i18n` and localized AI prompt templates, allowing seamless transitions between English and Chinese engineering environments.
 - **AI Proposes, System Validates**: AI is for reasoning; the system is for execution and safety.
-- **Language-Aware Reasoning**: i18n is not just for UI strings, but also for AI thought processes.
-- **Validation-First, Human-in-the-Loop**: Never trust AI output blindly.
-- **Patch-based Evolution**: Incremental changes are superior to full regeneration.
 
 ### �💎 Project Value
 
@@ -179,6 +184,8 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 ## 🇨🇳 中文版本
 
 ### 📖 项目介绍
+
+**AxiomSchema 是一款 AI 原生的 SSOT（唯一事实源）引擎**，专门用于通过自然语言生成和管理结构化数据定义（JSON Schema）。它将 Schema 视为系统的唯一事实源，并采用**精准补丁（Surgical Patching）**机制进行增量更新。
 
 在 AI 驱动开发的时代，大多数“表单生成器”只关注一次性生成。然而，真实业务需求是**增量演进**的。用户往往在初始生成后提出“加个手机号字段”或“把这个设为必填”等修改。
 
@@ -286,6 +293,9 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 
 ### 🔒 安全与部署
 
+#### 全球部署策略
+作为基础设施级工具，AxiomSchema 必须具备高可用性。它遵循与 **traceRAG 相同的 Geo-DNS 流量拆分逻辑**，确保无论客户端身处何地，AI 推理与 JSON Patch 生成都能保持极速且可靠。
+
 #### Serverless API 执行层 (Vercel)
 所有 AI 请求统一走 `/api/ai`：
 - **API Key** 永不暴露给前端。
@@ -295,10 +305,10 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 ### 📐 设计理念
 
 - **Schema 是唯一事实源**：AI、UI 甚至多语言逻辑均同步于同一状态。
+- **精准 JSON 补丁 (Surgical Patching)**：不再全量重新生成 Schema，而是生成增量补丁，保护现有结构的完整性。
+- **意图守护 (Intent Guardrails)**：将 SSOT 作为硬约束，防止在修改关键字段（如安全敏感的机器人参数）时产生“AI 幻觉”。
+- **全栈 i18n 架构**：基于 `vue-i18n` 与本地化 AI 提示词模板构建，实现中英文工程环境的无缝切换。
 - **AI 负责“建议”，系统负责“执行”**：AI 提供推理，系统负责安全与落地。
-- **全链路语言对齐**：国际化不仅是 UI 文案，更是 AI 推理与生成的全链路对齐。
-- **校验优先，人类参与**：绝不盲目信任 AI 输出。
-- **以增量演进代替全量重写**：保护用户心智与 Token 成本。
 
 ### 💎 项目价值
 
