@@ -4,7 +4,7 @@ import i18n from '../locales/i18n';
 const getConfig = () => ({
   apiKey: import.meta.env.VITE_AI_API_KEY || "",
   apiBaseUrl:
-    import.meta.env.VITE_AI_API_BASE_URL || "https://api.deepseek.com",
+    import.meta.env.AI_API_BASE_URL || "https://api.deepseek.com",
   model: "deepseek-chat",
   temperature: 0.3 // 控制回复的随机性
 });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
-import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog, darkTheme } from 'naive-ui'
+import { NConfigProvider, NInput, NAlert, NButton, NDrawer, NDrawerContent, NDropdown, NTag, createDiscreteApi, NDialog, NSpin, darkTheme } from 'naive-ui'
 import { useDark, useToggle } from '@vueuse/core'
 import { Codemirror } from 'vue-codemirror'
 import { json } from '@codemirror/lang-json'
@@ -32,6 +32,8 @@ import { shouldClarify, isVagueOptimizeInput } from './utils/intentGuard'
 import { buildImpactFromOps, buildStandardSummary } from './utils/patchSummary'
 import type { ClarifyInfo } from './types/intent'
 import { applyPatchPartial } from './utils/applyPatchPartial'
+import type { PatchHistoryRecord } from './types/history'
+import { fetchHistory, saveHistory, rollbackPatch } from './services/storageService'
 
 
 const promptInputRef = ref<any>(null) // 用于获取 PromptInput 组件实例
@@ -134,83 +136,47 @@ const versionMismatchInfo = ref<{ current: number; base: number }>({ current: 1,
 const clarifyVisible = ref(false)
 const clarifyInfo = ref<ClarifyInfo | null>(null)
 
-// Patch 历史记录（最多 5 条）
-interface PatchHistoryRecord {
-  id: string
-  timestamp: number
-  summary: string
-  patch: any
-  beforeSchema: any
-  afterSchema: any
-  // extended metadata
-  source?: 'AI' | 'MANUAL' | 'IMPORT' | 'ROLLBACK'
-  baseVersion?: number
-  toVersion?: number
-  impact?: { added: string[]; updated: string[]; removed: string[] }
-  counts?: { added: number; updated: number; removed: number; validOps: number; skippedOps: number }
-}
-
-const PATCH_HISTORY_KEY = 'axiom-schema-patch-history'
+// Patch 历史记录
 const patchHistory = ref<PatchHistoryRecord[]>([])
+const isLoadingHistory = ref(false)
 const expandedRecordIds = ref<Record<string, boolean>>({})
 
-// 从 localStorage 恢复历史
-function loadPatchHistory() {
+// 从后端恢复历史
+async function loadPatchHistory() {
+  isLoadingHistory.value = true
   try {
-    const stored = localStorage.getItem(PATCH_HISTORY_KEY)
-    if (stored) {
-      const rawList = JSON.parse(stored)
-      // normalize legacy records
-      patchHistory.value = rawList.map((r: any) => {
-        const rec: PatchHistoryRecord = {
-          id: r.id || `${r.timestamp || Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: r.timestamp || Date.now(),
-          summary: r.summary || '',
-          patch: r.patch || {},
-          beforeSchema: r.beforeSchema || null,
-          afterSchema: r.afterSchema || null,
-          source: r.source || 'AI',
-          baseVersion: r.baseVersion ?? r.patch?.baseVersion ?? r.beforeSchema?.meta?.version ?? 0,
-          toVersion: r.toVersion ?? r.afterSchema?.meta?.version ?? r.beforeSchema?.meta?.version ?? 0,
-          impact: r.impact || buildImpactFromOps(r.patch?.operations || []),
-          counts:
-            r.counts ||
-            {
-              added: (r.impact?.added?.length ?? (r.patch?.operations || []).filter((o: any) => o.op === 'add').length) || 0,
-              updated: (r.impact?.updated?.length ?? (r.patch?.operations || []).filter((o: any) => o.op === 'update').length) || 0,
-              removed: (r.impact?.removed?.length ?? (r.patch?.operations || []).filter((o: any) => o.op === 'remove').length) || 0,
-              validOps: r.counts?.validOps ?? (r.patch?.operations?.length ?? 0),
-              skippedOps: r.counts?.skippedOps ?? 0
-            }
-        }
-        // ensure summary exists
-        if (!rec.summary) {
-          rec.summary = buildStandardSummary(rec.impact || { added: [], updated: [], removed: [] }, rec.beforeSchema, rec.afterSchema)
-        }
-        return rec
-      })
+    const records = await fetchHistory()
+    patchHistory.value = records
+    
+    // 页面加载时，使用最新的 Patch 记录恢复 Schema 状态
+    if (records.length > 0) {
+       const latest = records[0]
+       // 确保 afterSchema 存在
+       if (latest.afterSchema) {
+          const normalized = ensureSchemaVersion(latest.afterSchema)
+          schema.value = normalized
+          schemaText.value = JSON.stringify(normalized, null, 2)
+       }
     }
   } catch (e) {
     console.error('加载 Patch 历史失败', e)
+    message.error('加载历史记录失败')
+  } finally {
+    isLoadingHistory.value = false
   }
 }
 
-// 保存历史到 localStorage
-function savePatchHistory() {
+// 添加历史记录并保存到后端
+async function addPatchHistory(record: PatchHistoryRecord) {
+  // 乐观更新：先更新 UI
+  patchHistory.value.unshift(record)
+  
   try {
-    localStorage.setItem(PATCH_HISTORY_KEY, JSON.stringify(patchHistory.value))
+    await saveHistory(record)
   } catch (e) {
     console.error('保存 Patch 历史失败', e)
+    message.error('保存历史记录失败')
   }
-}
-
-// 添加历史记录
-function addPatchHistory(record: PatchHistoryRecord) {
-  patchHistory.value.unshift(record)
-  if (patchHistory.value.length > 5) {
-    patchHistory.value = patchHistory.value.slice(0, 5)
-  }
-  savePatchHistory()
 }
 
 // 回滚到指定记录
@@ -245,18 +211,34 @@ function rollbackTo(record: PatchHistoryRecord) {
 }
 
 // 执行回滚操作
-function performRollback(record: PatchHistoryRecord) {
-  schema.value = deepClone(record.beforeSchema)
-  schemaText.value = JSON.stringify(record.beforeSchema, null, 2)
-  // 清空当前状态
-  pendingPatch.value = null
-  isPatchModalOpen.value = false
-  highlightMap.value = { added: [], updated: [] }
-  selectedFieldKey.value = null
-  showFieldEditor.value = false
-  backupField.value = null
-  showHistoryDrawer.value = false
-  message.success(t('history.rollback_success', { summary: record.summary }))
+async function performRollback(record: PatchHistoryRecord) {
+  isLoadingHistory.value = true
+  try {
+    // 调用后端接口执行回滚
+    await rollbackPatch(record.id)
+    
+    // 回滚成功后，更新本地状态
+    schema.value = deepClone(record.beforeSchema)
+    schemaText.value = JSON.stringify(record.beforeSchema, null, 2)
+    
+    // 刷新历史记录，以获取最新的回滚记录（后端通常会生成一条类型为 ROLLBACK 的新记录）
+    await loadPatchHistory()
+    
+    // 清空当前状态
+    pendingPatch.value = null
+    isPatchModalOpen.value = false
+    highlightMap.value = { added: [], updated: [] }
+    selectedFieldKey.value = null
+    showFieldEditor.value = false
+    backupField.value = null
+    showHistoryDrawer.value = false
+    message.success(t('history.rollback_success', { summary: record.summary }))
+  } catch (e: any) {
+    console.error('回滚失败', e)
+    message.error(e.message || '回滚失败，请稍后重试')
+  } finally {
+    isLoadingHistory.value = false
+  }
 }
 
 // 格式化时间
@@ -297,7 +279,9 @@ function getPatchDiff(patch: any): { added: string[]; updated: string[] } {
 }
 
 // 页面初始化时加载历史
-loadPatchHistory()
+onMounted(() => {
+  loadPatchHistory()
+})
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
@@ -476,21 +460,36 @@ async function handleGenerate(userPrompt: string) {
   if (generatePhase.value === 'done' || generatePhase.value === 'error') {
     generatePhase.value = 'idle'
   }
-  // 构建 prompt 参数
-  const promptParams = {
-    has_schema: !!schema.value,
-    user_input: userPrompt
-  }
   try {
     generatePhase.value = 'classifying'
-    const classification: any = await callDeepSeekAPI(JSON.stringify(promptParams), getClassifierPrompt(locale.value))
-    if (classification && classification.error) {
-      console.error('分类失败', classification.error)
-      parseError.value = classification.error
-      generatePhase.value = 'error'
-      message.error(classification.error)
-      return
+    const response = await fetch(`${import.meta.env.VITE_AI_API_BASE_URL}/api/v1/schema/classify-intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Locale': locale.value
+      },
+      body: JSON.stringify({
+        user_input: userPrompt,
+        has_schema: !!schema.value
+      })
+    })
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}))
+      throw new Error(errBody.error || response.statusText)
     }
+
+    const resJson: any = await response.json()
+    if (resJson.code !== 200 || !resJson.data) {
+       const errMsg = resJson.message || 'Unknown error'
+       console.error('分类失败', errMsg)
+       parseError.value = errMsg
+       generatePhase.value = 'error'
+       message.error(errMsg)
+       return
+    }
+
+    const classification = resJson.data
 
     // Intent Guard: 检查是否需要澄清意图
     const intentResult = { intent: classification.intent, confidence: classification.confidence || 0 }
@@ -520,31 +519,49 @@ async function handleGenerate(userPrompt: string) {
 const generateSchema = async (userPrompt: string, intent: string) => {
   try {
     let result: any
+    let endpoint = ''
+    let body: any = {}
 
     if (intent === 'PATCH_UPDATE') {
       if (!schema.value) {
         throw new Error(t('message.no_schema_patch'))
       }
       generatePhase.value = 'patching'
-      // 按 PATCH_UPDATE_PROMPT 约定，将 current_schema 与 user_instruction 作为两部分输入
-      const patchInput = `
-current_schema:
-${JSON.stringify(schema.value, null, 2)}
-
-user_instruction:
-${userPrompt}
-`.trim()
-      result = await callDeepSeekAPI(patchInput, getSchemaPrompt(intent, locale.value))
+      endpoint = '/api/v1/schema/form/patch'
+      body = {
+        current_schema: schema.value,
+        user_instruction: userPrompt
+      }
     } else {
       generatePhase.value = 'generating'
-      result = await callDeepSeekAPI(userPrompt, getSchemaPrompt(intent, locale.value))
+      endpoint = '/api/v1/schema/form/generate'
+      body = {
+        user_requirement: userPrompt,
+      }
     }
-    if (result && result.error) {
-      parseError.value = result.error
+
+    const response = await fetch(`${import.meta.env.VITE_AI_API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_AI_API_KEY}`,
+        'X-Locale': locale.value
+      },
+      body: JSON.stringify(body)
+    })
+
+    const resJson = await response.json().catch(() => ({}))
+
+    if (!response.ok || resJson.code !== 200 || !resJson.data) {
+      const errMsg = resJson.message || response.statusText || 'Unknown error'
+      parseError.value = errMsg
       generatePhase.value = 'error'
-      message.error(result.error)
+      message.error(errMsg)
       return
     }
+
+    result = resJson.data
+
     if (intent === 'PATCH_UPDATE') {
       // Validate patch using new validation layer
       const validation = validatePatch(schema.value, result)
@@ -817,13 +834,13 @@ function onConfirm(changed?: boolean) {
       const currentVer = schema.value?.meta?.version ?? 1
       const newVersion = currentVer + 1
 
-      // 保存修改前的 schema（用于历史记录）
+      // 保存修改前的 schema（用于历史记录），确保是完整快照
       const beforeSchema = deepClone(schema.value)
 
       // 应用版本更新
       schema.value = { ...schema.value, meta: { ...(schema.value.meta || {}), version: newVersion } }
 
-      // 构建修改后的 schema（用于历史记录）
+      // 构建修改后的 schema（用于历史记录），确保是完整快照
       const afterSchema = deepClone(schema.value)
 
       // 构建 impact 和统计信息
@@ -1056,62 +1073,64 @@ function handleFileSelect(event: Event) {
       <NDrawer :show="showHistoryDrawer" :width="400" placement="right"
         @update:show="(val) => (showHistoryDrawer = val)">
         <NDrawerContent :title="t('history.title')">
-          <div class="history-drawer-content">
-            <div v-for="(record, index) in patchHistory" :key="record.id" class="history-item"
-              :class="{ 'history-item--latest': index === 0 }">
-              <div class="history-item-header">
-                <span class="history-item-summary">{{ record.summary }}</span>
-                <span class="history-item-time">{{ formatTime(record.timestamp) }}</span>
-              </div>
-              <div class="history-item-meta">
-                <div class="meta-tags">
-                  <NTag size="small" type="info" style="margin-right:6px">{{ record.source || 'AI' }}</NTag>
-                  <NTag size="small" type="default" style="margin-right:6px">v{{ record.baseVersion ?? 0 }} → v{{ record.toVersion ?? 0 }}</NTag>
-                  <NTag size="small" type="success" style="margin-right:6px">{{ t('patch.status.add', { name: record.counts?.added ?? record.impact?.added?.length ?? 0 }) }}</NTag>
-                  <NTag size="small" type="warning" style="margin-right:6px">{{ t('patch.status.update', { name: record.counts?.updated ?? record.impact?.updated?.length ?? 0, props: '' }) }}</NTag>
-                  <NTag size="small" type="error">{{ t('patch.status.remove', { name: record.counts?.removed ?? record.impact?.removed?.length ?? 0 }) }}</NTag>
+          <NSpin :show="isLoadingHistory">
+            <div class="history-drawer-content">
+              <div v-for="(record, index) in patchHistory" :key="record.id" class="history-item"
+                :class="{ 'history-item--latest': index === 0 }">
+                <div class="history-item-header">
+                  <span class="history-item-summary">{{ record.summary }}</span>
+                  <span class="history-item-time">{{ formatTime(record.timestamp) }}</span>
                 </div>
-                <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-                  <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
-                  <NButton size="tiny" quaternary :type="showDiffId === record.id ? 'primary' : 'default'" @click="showDiffId = showDiffId === record.id ? null : record.id">
-                    {{ showDiffId === record.id ? t('common.cancel') : 'Diff' }}
-                  </NButton>
-                  <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
-                    <div style="color: #fff;">{{ t('history.rollback') }}</div>
-                  </NButton>
+                <div class="history-item-meta">
+                  <div class="meta-tags">
+                    <NTag size="small" type="info" style="margin-right:6px">{{ record.source || 'AI' }}</NTag>
+                    <NTag size="small" type="default" style="margin-right:6px">v{{ record.baseVersion ?? 0 }} → v{{ record.toVersion ?? 0 }}</NTag>
+                    <NTag size="small" type="success" style="margin-right:6px">{{ t('patch.status.add', { name: record.counts?.added ?? record.impact?.added?.length ?? 0 }) }}</NTag>
+                    <NTag size="small" type="warning" style="margin-right:6px">{{ t('patch.status.update', { name: record.counts?.updated ?? record.impact?.updated?.length ?? 0, props: '' }) }}</NTag>
+                    <NTag size="small" type="error">{{ t('patch.status.remove', { name: record.counts?.removed ?? record.impact?.removed?.length ?? 0 }) }}</NTag>
+                  </div>
+                  <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                    <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
+                    <NButton size="tiny" quaternary :type="showDiffId === record.id ? 'primary' : 'default'" @click="showDiffId = showDiffId === record.id ? null : record.id">
+                      {{ showDiffId === record.id ? t('common.cancel') : 'Diff' }}
+                    </NButton>
+                    <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
+                      <div style="color: #fff;">{{ t('history.rollback') }}</div>
+                    </NButton>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Visual Diff 视图 -->
-              <div v-if="showDiffId === record.id" class="history-diff-viewer">
-                <Diff 
-                  mode="unified" 
-                  :old-content="JSON.stringify(record.beforeSchema || {}, null, 2)" 
-                  :new-content="JSON.stringify(record.afterSchema || {}, null, 2)" 
-                  language="json"
-                  :theme="isDark ? 'dark' : 'light'"
-                />
-              </div>
+                <!-- Visual Diff 视图 -->
+                <div v-if="showDiffId === record.id" class="history-diff-viewer">
+                  <Diff 
+                    mode="unified" 
+                    :old-content="JSON.stringify(record.beforeSchema || {}, null, 2)" 
+                    :new-content="JSON.stringify(record.afterSchema || {}, null, 2)" 
+                    language="json"
+                    :theme="isDark ? 'dark' : 'light'"
+                  />
+                </div>
 
-              <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
-                <div v-if="record.impact?.added && record.impact.added.length > 0" class="diff-line">
-                  <strong>{{ t('common.success') }}：</strong> {{ record.impact.added.join('、') }}
+                <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
+                  <div v-if="record.impact?.added && record.impact.added.length > 0" class="diff-line">
+                    <strong>{{ t('common.success') }}：</strong> {{ record.impact.added.join('、') }}
+                  </div>
+                  <div v-if="record.impact?.updated && record.impact.updated.length > 0" class="diff-line">
+                    <strong>{{ t('common.warning') }}：</strong> {{ record.impact.updated.join('、') }}
+                  </div>
+                  <div v-if="record.impact?.removed && record.impact.removed.length > 0" class="diff-line">
+                    <strong>{{ t('common.error') }}：</strong> {{ record.impact.removed.join('、') }}
+                  </div>
+                  <div class="diff-line" v-if="record.counts?.skippedOps">
+                    <strong>{{ t('message.skipped', { count: '' }) }}：</strong> {{ record.counts.skippedOps }}
+                  </div>
                 </div>
-                <div v-if="record.impact?.updated && record.impact.updated.length > 0" class="diff-line">
-                  <strong>{{ t('common.warning') }}：</strong> {{ record.impact.updated.join('、') }}
-                </div>
-                <div v-if="record.impact?.removed && record.impact.removed.length > 0" class="diff-line">
-                  <strong>{{ t('common.error') }}：</strong> {{ record.impact.removed.join('、') }}
-                </div>
-                <div class="diff-line" v-if="record.counts?.skippedOps">
-                  <strong>{{ t('message.skipped', { count: '' }) }}：</strong> {{ record.counts.skippedOps }}
-                </div>
+              </div>
+              <div v-if="patchHistory.length === 0" class="history-empty">
+                {{ t('history.empty') }}
               </div>
             </div>
-            <div v-if="patchHistory.length === 0" class="history-empty">
-              {{ t('history.empty') }}
-            </div>
-          </div>
+          </NSpin>
         </NDrawerContent>
       </NDrawer>
 
