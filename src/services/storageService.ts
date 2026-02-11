@@ -14,9 +14,7 @@ const getApiKey = () => import.meta.env.VITE_AI_API_KEY || ''
  */
 export async function fetchHistory(projectId: string = DEFAULT_PROJECT_ID): Promise<PatchHistoryRecord[]> {
   const response = await fetch(`${getApiBaseUrl()}/api/projects/${projectId}/patches`, {
-    headers: {
-      'Authorization': `Bearer ${getApiKey()}`
-    }
+   
   })
   if (!response.ok) {
     throw new Error(`Failed to fetch history: ${response.statusText}`)
@@ -42,7 +40,6 @@ export async function saveHistory(record: PatchHistoryRecord, projectId: string 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getApiKey()}`
     },
     body: JSON.stringify(record)
   })
@@ -67,7 +64,6 @@ export async function rollbackPatch(targetPatchId: string, projectId: string = D
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getApiKey()}`
     },
     body: JSON.stringify({ target_patch_id: targetPatchId })
   })

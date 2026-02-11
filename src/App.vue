@@ -544,7 +544,6 @@ const generateSchema = async (userPrompt: string, intent: string) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_AI_API_KEY}`,
         'X-Locale': locale.value
       },
       body: JSON.stringify(body)
