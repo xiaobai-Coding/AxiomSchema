@@ -629,7 +629,12 @@ const generateSchema = async (userPrompt: string, intent: string) => {
           positiveText: t('auth.login_now'),
           negativeText: t('common.cancel'),
           onPositiveClick: () => {
-             clerk.openSignIn({})
+             const signInBtn = document.querySelector('.cl-signInButton') as HTMLElement
+             if (signInBtn) {
+               signInBtn.click()
+             } else {
+               console.warn('Unable to trigger sign in: Button not found')
+             }
            }
         })
         generatePhase.value = 'idle'
