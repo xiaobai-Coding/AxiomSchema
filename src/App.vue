@@ -24,7 +24,8 @@ import { useAuth, useSession, useUser, useClerk } from '@clerk/vue'
 const { t, locale } = useI18n()
 const { session } = useSession()
 const { isSignedIn } = useAuth()
-const clerk = useClerk()
+// const clerk = useClerk() // 生产环境报错，暂不使用 useClerk 实例方法
+
 
 // Check authentication
 // onMounted(async () => {
