@@ -18,17 +18,24 @@ const getApiBaseUrl = () => import.meta.env.VITE_AI_API_BASE_URL || ''
 // 为了最小化修改，我们让这些函数接受可选的 token 参数。
 // 在组件调用时，使用 await session.value?.getToken() 获取并传入。
 
+const LOCAL_STORAGE_KEY = 'axiom_patch_history'
+
 /**
- * 从后端获取 Patch 历史
+ * 从后端或本地获取 Patch 历史
  */
 export async function fetchHistory(projectId: string = DEFAULT_PROJECT_ID, token?: string | null): Promise<PatchHistoryRecord[]> {
+  if (!token) {
+    // 未登录时，从本地存储读取
+    const localData = localStorage.getItem(LOCAL_STORAGE_KEY)
+    return localData ? JSON.parse(localData) : []
+  }
+
+  // 已登录，走后端 API
   const headers: HeadersInit = {
     'Content-Type': 'application/json'
   }
   
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
+  headers['Authorization'] = `Bearer ${token}`
 
   const response = await fetch(`/api/projects/${projectId}/patches`, {
     headers
@@ -50,16 +57,27 @@ export async function fetchHistory(projectId: string = DEFAULT_PROJECT_ID, token
 }
 
 /**
- * 保存 Patch 到后端
+ * 保存 Patch 到后端或本地
  */
 export async function saveHistory(record: PatchHistoryRecord, projectId: string = DEFAULT_PROJECT_ID, token?: string | null): Promise<{ version: number }> {
+  if (!token) {
+    // 未登录时，保存到本地存储
+    const localData = localStorage.getItem(LOCAL_STORAGE_KEY)
+    const history: PatchHistoryRecord[] = localData ? JSON.parse(localData) : []
+    history.unshift(record) // 添加到头部
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(history))
+    
+    // 模拟返回 version，自增
+    const version = (record.baseVersion || 0) + 1
+    return { version }
+  }
+
+  // 已登录，走后端 API
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
+  headers['Authorization'] = `Bearer ${token}`
 
   const response = await fetch(`${getApiBaseUrl()}/api/projects/${projectId}/patches`, {
     method: 'POST',
@@ -83,13 +101,19 @@ export async function saveHistory(record: PatchHistoryRecord, projectId: string 
  * 回滚到指定 Patch
  */
 export async function rollbackPatch(targetPatchId: string, projectId: string = DEFAULT_PROJECT_ID, token?: string | null): Promise<void> {
+  if (!token) {
+    // 未登录时，仅在前端逻辑层处理回滚（App.vue 已经处理了状态回滚），
+    // 这里主要负责更新本地存储中的历史记录状态（如果有必要的话，比如标记为已回滚）
+    // 目前本地存储仅用于简单的持久化，App.vue 内存状态才是 source of truth
+    // 所以这里可以什么都不做，或者清理本地历史中该节点之后的记录
+    return
+  }
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
+  headers['Authorization'] = `Bearer ${token}`
 
   const response = await fetch(`/api/projects/${projectId}/rollback`, {
     method: 'POST',

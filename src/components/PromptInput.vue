@@ -149,9 +149,16 @@ defineExpose({
       <div class="header-right">
         <!-- Auth Buttons -->
         <SignedOut>
-          <SignInButton mode="modal">
-            <NButton quaternary size="small" type="primary" class="sign-in-btn">
+          <SignInButton mode="modal" v-slot="{ handler }">
+             <NButton 
+               quaternary 
+               size="small" 
+               type="primary" 
+               class="sign-in-btn cl-signInButton" 
+               @click="handler"
+             >
               <template #icon>
+                <span class="icon">🔑</span>
               </template>
               <span class="sign-in-text">{{ locale === 'zh' ? '登录' : 'Sign In' }}</span>
             </NButton>

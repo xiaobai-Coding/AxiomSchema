@@ -110,5 +110,10 @@
     "skipped": "{count} skipped",
     "pending_patch": "There is a pending patch, please handle it first",
     "no_schema_patch": "No Schema available to modify, please generate one first."
+  },
+  "auth": {
+    "trial_ended_title": "Free Trial Ended",
+    "trial_ended_content": "Your free trial usage has been exhausted. Please sign in to continue using AI features.",
+    "login_now": "Sign In Now"
   }
 }

@@ -110,5 +110,10 @@
     "skipped": "{count} 条已跳过",
     "pending_patch": "当前有待确认的 Patch，请先处理后再继续操作",
     "no_schema_patch": "当前没有可修改的 Schema，请先生成一份表单。"
+  },
+  "auth": {
+    "trial_ended_title": "免费试用结束",
+    "trial_ended_content": "您的免费试用次数已耗尽。请登录以继续使用 AI 生成功能。",
+    "login_now": "立即登录"
   }
 }

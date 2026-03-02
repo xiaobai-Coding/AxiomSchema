@@ -19,11 +19,12 @@ import VersionMismatchDialog from './components/VersionMismatchDialog.vue'
 import { callDeepSeekAPI } from './services/aiService'
 import { getClassifierPrompt, getSchemaPrompt } from './prompts/schemaPrompt';
 import { useI18n } from 'vue-i18n'
-import { useAuth, useSession, useUser } from '@clerk/vue'
+import { useAuth, useSession, useUser, useClerk } from '@clerk/vue'
 
 const { t, locale } = useI18n()
 const { session } = useSession()
 const { isSignedIn } = useAuth()
+const clerk = useClerk()
 
 // Check authentication
 // onMounted(async () => {
@@ -159,10 +160,7 @@ async function loadPatchHistory() {
     const token = await session.value?.getToken()
     // console.log('loadPatchHistory Token:', token)
     
-    if (!token) {
-      // console.warn('loadPatchHistory: No token available yet')
-      return
-    }
+    // 如果 token 不存在，fetchHistory 会自动回退到本地存储，所以不需要拦截
     const records = await fetchHistory(undefined, token)
     patchHistory.value = records
     
@@ -304,20 +302,20 @@ function getPatchDiff(patch: any): { added: string[]; updated: string[] } {
     if (newVal) {
       // 等待 session 完全就绪
       await nextTick()
-      // 用户登录后，重新加载历史记录
+      // 用户登录后，重新加载历史记录（从后端合并或覆盖）
       loadPatchHistory()
     } else {
-      // 用户登出后，可以选择清空历史或保留
-      // patchHistory.value = []
+      // 用户登出后，重新加载历史（从本地存储读取）
+      loadPatchHistory()
     }
   })
 
-onMounted(() => {
-  // 初始加载（如果已经登录）
-  if (isSignedIn.value) {
+  onMounted(() => {
+    // 初始加载：无论登录与否，都加载历史
+    // 如果未登录，loadPatchHistory 会调用 fetchHistory(undefined)，从而读取本地存储
+    // 如果已登录，loadPatchHistory 会获取 token 并调用后端 API
     loadPatchHistory()
-  }
-})
+  })
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
@@ -513,6 +511,34 @@ async function handleGenerate(userPrompt: string) {
     })
 
     if (!response.ok) {
+      // 特殊处理 429 错误 (Too Many Requests)
+      if (response.status === 429) {
+        dialog.warning({
+          title: t('auth.trial_ended_title'),
+          content: t('auth.trial_ended_content'),
+          positiveText: t('auth.login_now'),
+          negativeText: t('common.cancel'),
+          onPositiveClick: () => {
+             // 尝试触发登录模态框
+             const signInBtn = document.querySelector('.cl-signInButton') as HTMLElement
+             if (signInBtn) {
+               signInBtn.click()
+             } else {
+                // Fallback: 如果页面上找不到登录按钮，则尝试刷新页面或直接跳转
+                // 注意：由于是 SPA，我们尽量避免硬编码 Clerk 的托管登录页，
+                // 但如果本地按钮都不可见（比如 PromptInput 组件未挂载），
+                // 那么这通常意味着布局异常。
+                // 暂时先只打印警告，避免调用不存在的方法。
+                console.warn('Unable to trigger sign in: Button not found')
+                // window.location.href = 'https://accounts.clerk.dev/sign-in' 
+                // clerk.openSignIn({}) // 这行导致了报错，必须移除
+             }
+           }
+        })
+        generatePhase.value = 'idle'
+        return
+      }
+
       const errBody = await response.json().catch(() => ({}))
       throw new Error(errBody.error || response.statusText)
     }
@@ -594,6 +620,21 @@ const generateSchema = async (userPrompt: string, intent: string) => {
     const resJson = await response.json().catch(() => ({}))
 
     if (!response.ok || resJson.code !== 200 || !resJson.data) {
+      // 特殊处理 429 错误 (Too Many Requests)
+      if (response.status === 429) {
+        dialog.warning({
+          title: t('auth.trial_ended_title'),
+          content: t('auth.trial_ended_content'),
+          positiveText: t('auth.login_now'),
+          negativeText: t('common.cancel'),
+          onPositiveClick: () => {
+             clerk.openSignIn({})
+           }
+        })
+        generatePhase.value = 'idle'
+        return
+      }
+
       const errMsg = resJson.message || response.statusText || 'Unknown error'
       parseError.value = errMsg
       generatePhase.value = 'error'
