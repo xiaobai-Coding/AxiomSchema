@@ -16,7 +16,8 @@ const config = getConfig();
  */
 export async function callDeepSeekAPI(
   userPrompt: string,
-  prompt: string | null
+  prompt: string | null,
+  token?: string | null
 ) {
   const messages = [
     { role: "system", content: prompt || "" },
@@ -47,7 +48,11 @@ export async function callDeepSeekAPI(
 
   if (useServerApi) {
     headers["X-Client-Token"] = import.meta.env.VITE_CLIENT_TOKEN || "";
-    delete headers.Authorization;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete headers.Authorization;
+    }
   }
   try { 
     const res = await fetch(endpoint, {

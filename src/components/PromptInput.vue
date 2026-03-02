@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 import { NCard, NInput, NButton, NSpace, NTag, NTooltip } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { useDark, useToggle } from '@vueuse/core'
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/vue'
 
 const { t, locale } = useI18n()
 
@@ -146,6 +147,20 @@ defineExpose({
       </div>
       
       <div class="header-right">
+        <!-- Auth Buttons -->
+        <SignedOut>
+          <SignInButton mode="modal">
+            <NButton quaternary size="small" type="primary" class="sign-in-btn">
+              <template #icon>
+              </template>
+              <span class="sign-in-text">{{ locale === 'zh' ? '登录' : 'Sign In' }}</span>
+            </NButton>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton afterSignOutUrl="/"/>
+        </SignedIn>
+
         <!-- 主题切换 -->
         <NTooltip trigger="hover">
           <template #trigger>
@@ -371,6 +386,30 @@ html.dark .segmented-control button.active {
   transform: rotate(15deg);
 }
 
+.sign-in-btn {
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: #4f46e5; /* 默认使用品牌色，确保清晰可见 */
+}
+
+.sign-in-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5; /* hover 时加深颜色 */
+}
+
+.icon {
+  font-size: 14px;
+}
+
+.sign-in-text {
+  font-weight: 600;
+  color: #fff;
+}
+.sign-in-text:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px rgba(99, 102, 241, 0.25);
+}
 /* 移动端适配 */
 @media (max-width: 600px) {
   .prompt-header {

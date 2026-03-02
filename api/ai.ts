@@ -30,23 +30,30 @@ function normalizeIp(raw?: string | undefined) {
 
 // 限流函数，用于检查IP是否超过限制
 async function checkRateLimit(ip: string) {
-  const windowSeconds = 60; // 时间窗：60 秒
-  const limit = 10; // 限制次数
-  const key = `rate_limit:${ip}`;
+  try {
+    const windowSeconds = 60; // 时间窗：60 秒
+    const limit = 10; // 限制次数
+    const key = `rate_limit:${ip}`;
 
-  // 原子自增
-  const count = await kv.incr(key);
+    // 原子自增
+    const count = await kv.incr(key);
 
-  // 第一次请求，设置过期时间
-  if (count === 1) {
-    await kv.expire(key, windowSeconds);
+    // 第一次请求，设置过期时间
+    if (count === 1) {
+      await kv.expire(key, windowSeconds);
+    }
+
+    if (count > limit) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    // 如果 KV 服务不可用（如配置错误），则降级为允许请求（Fail Open）
+    // 避免因为限流服务故障导致核心业务不可用
+    console.warn("Rate limit check failed (failing open):", error);
+    return true;
   }
-
-  if (count > limit) {
-    return false;
-  }
-
-  return true;
 }
 
 // Vercel API handler

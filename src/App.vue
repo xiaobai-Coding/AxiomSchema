@@ -19,8 +19,19 @@ import VersionMismatchDialog from './components/VersionMismatchDialog.vue'
 import { callDeepSeekAPI } from './services/aiService'
 import { getClassifierPrompt, getSchemaPrompt } from './prompts/schemaPrompt';
 import { useI18n } from 'vue-i18n'
+import { useAuth, useSession, useUser } from '@clerk/vue'
 
 const { t, locale } = useI18n()
+const { session } = useSession()
+const { isSignedIn } = useAuth()
+
+// Check authentication
+// onMounted(async () => {
+//   const { data: { session } } = await supabase.auth.getSession()
+//   if (!session) {
+//     router.push('/login')
+//   }
+// })
 
 function changeLocale(lang: 'zh' | 'en') {
   locale.value = lang
@@ -145,7 +156,14 @@ const expandedRecordIds = ref<Record<string, boolean>>({})
 async function loadPatchHistory() {
   isLoadingHistory.value = true
   try {
-    const records = await fetchHistory()
+    const token = await session.value?.getToken()
+    // console.log('loadPatchHistory Token:', token)
+    
+    if (!token) {
+      // console.warn('loadPatchHistory: No token available yet')
+      return
+    }
+    const records = await fetchHistory(undefined, token)
     patchHistory.value = records
     
     // 页面加载时，使用最新的 Patch 记录恢复 Schema 状态
@@ -160,7 +178,8 @@ async function loadPatchHistory() {
     }
   } catch (e) {
     console.error('加载 Patch 历史失败', e)
-    message.error('加载历史记录失败')
+    // 如果是未登录导致失败，静默处理或显示“请登录”
+    // message.error('加载历史记录失败')
   } finally {
     isLoadingHistory.value = false
   }
@@ -172,7 +191,8 @@ async function addPatchHistory(record: PatchHistoryRecord) {
   patchHistory.value.unshift(record)
   
   try {
-    await saveHistory(record)
+    const token = await session.value?.getToken()
+    await saveHistory(record, undefined, token)
   } catch (e) {
     console.error('保存 Patch 历史失败', e)
     message.error('保存历史记录失败')
@@ -214,8 +234,9 @@ function rollbackTo(record: PatchHistoryRecord) {
 async function performRollback(record: PatchHistoryRecord) {
   isLoadingHistory.value = true
   try {
+    const token = await session.value?.getToken()
     // 调用后端接口执行回滚
-    await rollbackPatch(record.id)
+    await rollbackPatch(record.id, undefined, token)
     
     // 回滚成功后，更新本地状态
     schema.value = deepClone(record.beforeSchema)
@@ -279,8 +300,23 @@ function getPatchDiff(patch: any): { added: string[]; updated: string[] } {
 }
 
 // 页面初始化时加载历史
+  watch(isSignedIn, async (newVal) => {
+    if (newVal) {
+      // 等待 session 完全就绪
+      await nextTick()
+      // 用户登录后，重新加载历史记录
+      loadPatchHistory()
+    } else {
+      // 用户登出后，可以选择清空历史或保留
+      // patchHistory.value = []
+    }
+  })
+
 onMounted(() => {
-  loadPatchHistory()
+  // 初始加载（如果已经登录）
+  if (isSignedIn.value) {
+    loadPatchHistory()
+  }
 })
 
 function deepClone<T>(obj: T): T {
@@ -462,11 +498,13 @@ async function handleGenerate(userPrompt: string) {
   }
   try {
     generatePhase.value = 'classifying'
-    const response = await fetch(`${import.meta.env.VITE_AI_API_BASE_URL}/api/v1/schema/classify-intent`, {
+    const token = await session.value?.getToken()
+    const response = await fetch(`/api/v1/schema/classify-intent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Locale': locale.value
+        'X-Locale': locale.value,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
         user_input: userPrompt,
@@ -510,7 +548,9 @@ async function handleGenerate(userPrompt: string) {
     await generateSchema(userPrompt, classification.intent)
     generatePhase.value = 'done'
   } catch (err: any) {
+    console.error('API 请求失败', err)
     parseError.value = err.message
+    message.error(`请求失败: ${err.message}`)
     generatePhase.value = 'error'
   }
 }
@@ -539,12 +579,14 @@ const generateSchema = async (userPrompt: string, intent: string) => {
         user_requirement: userPrompt,
       }
     }
-
-    const response = await fetch(`${import.meta.env.VITE_AI_API_BASE_URL}${endpoint}`, {
+    
+    const token = await session.value?.getToken()
+    const response = await fetch(`${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Locale': locale.value
+        'X-Locale': locale.value,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify(body)
     })
@@ -941,199 +983,204 @@ function handleFileSelect(event: Event) {
 
 <template>
   <NConfigProvider :theme-overrides="themeOverrides" :theme="isDark ? darkTheme : null">
-    <main class="layout" :class="{ 'is-dark': isDark }">
-      <PromptInput ref="promptInputRef" :on-generate="handleGenerate" :has-schema="!!schema" :phase="generatePhase"
-        @generate="handleGenerate" />
+    <!-- <router-view v-slot="{ Component }">
+      <component :is="Component" v-if="router.currentRoute.value.path === '/login'" />
+      <main v-else class="layout" :class="{ 'is-dark': isDark }"> -->
+      <main class="layout" :class="{ 'is-dark': isDark }">
+        <PromptInput ref="promptInputRef" :on-generate="handleGenerate" :has-schema="!!schema" :phase="generatePhase"
+          @generate="handleGenerate" />
 
-      <!-- Intent 澄清模式 UI -->
-      <div v-if="clarifyVisible && clarifyInfo" class="clarify-section">
-        <div class="clarify-card">
-          <div class="clarify-header">
-            <div class="clarify-icon">
-              <span class="clarify-sparkle">💭</span>
-            </div>
-            <div class="clarify-title">
-              <h4>{{ t('clarify.title') }}</h4>
-              <p class="clarify-subtitle">{{ t('clarify.subtitle') }}</p>
-            </div>
-          </div>
-
-          <div class="clarify-content">
-            <div class="clarify-info">
-              <div class="info-item">
-                <span class="info-label">{{ t('clarify.current_intent') }}</span>
-                <span class="info-value intent">{{ clarifyInfo.intent }}</span>
+        <!-- Intent 澄清模式 UI -->
+        <div v-if="clarifyVisible && clarifyInfo" class="clarify-section">
+          <!-- ... clarifying content ... -->
+          <div class="clarify-card">
+            <div class="clarify-header">
+              <div class="clarify-icon">
+                <span class="clarify-sparkle">💭</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">{{ t('clarify.confidence') }}</span>
-                <span class="info-value confidence">{{ (clarifyInfo.confidence * 100).toFixed(1) }}%</span>
-              </div>
-              <div class="info-reason">
-                {{ clarifyInfo.reason === 'intent_unknown' ? t('patch.reason.invalid_op_shape') : 
-                   clarifyInfo.reason.startsWith('low_confidence') ? 
-                   t('clarify.subtitle') + ' (' + clarifyInfo.reason.split(':')[2] + ')' : 
-                   clarifyInfo.reason }}
+              <div class="clarify-title">
+                <h4>{{ t('clarify.title') }}</h4>
+                <p class="clarify-subtitle">{{ t('clarify.subtitle') }}</p>
               </div>
             </div>
 
-            <div class="clarify-options">
-              <p class="options-title">{{ t('clarify.options_title') }}</p>
-              <div class="clarify-buttons">
-                <NButton type="primary" @click="onClarifyChoosePatch" class="option-btn">
-                  <template #icon>
-                    <span class="btn-icon">✏️</span>
-                  </template>
-                  {{ t('clarify.patch') }}
-                </NButton>
-                <NButton type="info" @click="onClarifyChooseRegenerate" class="option-btn">
-                  <template #icon>
-                    <span class="btn-icon">🔄</span>
-                  </template>
-                  {{ t('clarify.regenerate') }}
-                </NButton>
-                <NButton ghost @click="onClarifyExplainMore" class="option-btn">
-                  <template #icon>
-                    <span class="btn-icon">💬</span>
-                  </template>
-                  {{ t('clarify.explain') }}
-                </NButton>
+            <div class="clarify-content">
+              <div class="clarify-info">
+                <div class="info-item">
+                  <span class="info-label">{{ t('clarify.current_intent') }}</span>
+                  <span class="info-value intent">{{ clarifyInfo.intent }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">{{ t('clarify.confidence') }}</span>
+                  <span class="info-value confidence">{{ (clarifyInfo.confidence * 100).toFixed(1) }}%</span>
+                </div>
+                <div class="info-reason">
+                  {{ clarifyInfo.reason === 'intent_unknown' ? t('patch.reason.invalid_op_shape') : 
+                     clarifyInfo.reason.startsWith('low_confidence') ? 
+                     t('clarify.subtitle') + ' (' + clarifyInfo.reason.split(':')[2] + ')' : 
+                     clarifyInfo.reason }}
+                </div>
+              </div>
+
+              <div class="clarify-options">
+                <p class="options-title">{{ t('clarify.options_title') }}</p>
+                <div class="clarify-buttons">
+                  <NButton type="primary" @click="onClarifyChoosePatch" class="option-btn">
+                    <template #icon>
+                      <span class="btn-icon">✏️</span>
+                    </template>
+                    {{ t('clarify.patch') }}
+                  </NButton>
+                  <NButton type="info" @click="onClarifyChooseRegenerate" class="option-btn">
+                    <template #icon>
+                      <span class="btn-icon">🔄</span>
+                    </template>
+                    {{ t('clarify.regenerate') }}
+                  </NButton>
+                  <NButton ghost @click="onClarifyExplainMore" class="option-btn">
+                    <template #icon>
+                      <span class="btn-icon">💬</span>
+                    </template>
+                    {{ t('clarify.explain') }}
+                  </NButton>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Patch 历史记录（仅显示最近一条） -->
-      <div v-if="patchHistory.length > 0" class="history-hint" @click="showHistoryDrawer = true">
-        <span class="history-text">{{ t('history.latest') }}{{ patchHistory[0].summary }}</span>
-      </div>
-
-      <section class="grid">
-        <div class="panel editor-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">{{ t('editor.json_title') }}</p>
-              <h2>{{ t('editor.json_subtitle') }}</h2>
-            </div>
-            <div class="actions">
-              <NDropdown :options="schemaMenuOptions" trigger="click" @select="handleSchemaMenuSelect">
-                <NButton size="tiny" quaternary type="primary" class="schema-action-btn">
-                  {{ t('common.history') }}
-                  <span style="margin-left: 4px; font-size: 10px;">▼</span>
-                </NButton>
-              </NDropdown>
-              <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileSelect" />
-            </div>
-          </div>
-          <div class="editor-container">
-            <Codemirror
-              v-model="schemaText"
-              :placeholder="t('editor.placeholder')"
-              :style="{ height: '100%' }"
-              :autofocus="true"
-              :indent-with-tab="true"
-              :tab-size="2"
-              :extensions="editorExtensions"
-            />
-          </div>
-          <NAlert v-if="parseError" type="error" class="alert">
-            {{ t('editor.parse_error') }}{{ parseError }}
-          </NAlert>
+        <!-- Patch 历史记录（仅显示最近一条） -->
+        <div v-if="patchHistory.length > 0" class="history-hint" @click="showHistoryDrawer = true">
+          <span class="history-text">{{ t('history.latest') }}{{ patchHistory[0].summary }}</span>
         </div>
 
-        <div class="panel form-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">{{ t('editor.preview_title') }}</p>
-              <h2 class="text-overflow-ellipsis">{{ schema?.title || t('common.title') }}</h2>
-            </div>
-            <span class="hint">{{ t('editor.preview_subtitle') }}</span>
-          </div>
-          <div class="form-body">
-            <FormRenderer v-if="schema" :schema="schema" :selected-field-key="selectedFieldKey"
-              :highlight-map="highlightMap" @select-field="openFieldEditor" />
-            <p v-else class="placeholder">{{ t('editor.placeholder') }}</p>
-          </div>
-        </div>
-      </section>
-
-      <FieldEditor v-if="schema && selectedFieldKey" :show="showFieldEditor" :schema="schema"
-        :field-key="selectedFieldKey" :backup-field="backupField" @update:show="(val) => (showFieldEditor = val)"
-        @update-schema="handleUpdateSchema" @confirm="onConfirm" @cancel="onCancel" @reset="onReset" />
-      <!-- Patch 操作决策预览 Modal -->
-      <PatchPreviewModal :show="isPatchModalOpen" :patch="pendingPatch" :schema="schema" :validation="pendingPatch?.validation"
-        @update:show="(val) => (isPatchModalOpen = val)" @confirm="confirmPatch" @cancel="cancelPatch" />
-
-      <!-- 版本冲突对话框（组件化，便于样式定制，与 PatchPreviewModal 保持一致的组件模式） -->
-      <VersionMismatchDialog :show="showVersionMismatchDialog" :info="versionMismatchInfo"
-        @update:show="(val) => (showVersionMismatchDialog = val)" />
-
-      <!-- Patch History Drawer -->
-      <NDrawer :show="showHistoryDrawer" :width="400" placement="right"
-        @update:show="(val) => (showHistoryDrawer = val)">
-        <NDrawerContent :title="t('history.title')">
-          <NSpin :show="isLoadingHistory">
-            <div class="history-drawer-content">
-              <div v-for="(record, index) in patchHistory" :key="record.id" class="history-item"
-                :class="{ 'history-item--latest': index === 0 }">
-                <div class="history-item-header">
-                  <span class="history-item-summary">{{ record.summary }}</span>
-                  <span class="history-item-time">{{ formatTime(record.timestamp) }}</span>
-                </div>
-                <div class="history-item-meta">
-                  <div class="meta-tags">
-                    <NTag size="small" type="info" style="margin-right:6px">{{ record.source || 'AI' }}</NTag>
-                    <NTag size="small" type="default" style="margin-right:6px">v{{ record.baseVersion ?? 0 }} → v{{ record.toVersion ?? 0 }}</NTag>
-                    <NTag size="small" type="success" style="margin-right:6px">{{ t('patch.status.add', { name: record.counts?.added ?? record.impact?.added?.length ?? 0 }) }}</NTag>
-                    <NTag size="small" type="warning" style="margin-right:6px">{{ t('patch.status.update', { name: record.counts?.updated ?? record.impact?.updated?.length ?? 0, props: '' }) }}</NTag>
-                    <NTag size="small" type="error">{{ t('patch.status.remove', { name: record.counts?.removed ?? record.impact?.removed?.length ?? 0 }) }}</NTag>
-                  </div>
-                  <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-                    <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
-                    <NButton size="tiny" quaternary :type="showDiffId === record.id ? 'primary' : 'default'" @click="showDiffId = showDiffId === record.id ? null : record.id">
-                      {{ showDiffId === record.id ? t('common.cancel') : 'Diff' }}
-                    </NButton>
-                    <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
-                      <div style="color: #fff;">{{ t('history.rollback') }}</div>
-                    </NButton>
-                  </div>
-                </div>
-
-                <!-- Visual Diff 视图 -->
-                <div v-if="showDiffId === record.id" class="history-diff-viewer">
-                  <Diff 
-                    mode="unified" 
-                    :old-content="JSON.stringify(record.beforeSchema || {}, null, 2)" 
-                    :new-content="JSON.stringify(record.afterSchema || {}, null, 2)" 
-                    language="json"
-                    :theme="isDark ? 'dark' : 'light'"
-                  />
-                </div>
-
-                <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
-                  <div v-if="record.impact?.added && record.impact.added.length > 0" class="diff-line">
-                    <strong>{{ t('common.success') }}：</strong> {{ record.impact.added.join('、') }}
-                  </div>
-                  <div v-if="record.impact?.updated && record.impact.updated.length > 0" class="diff-line">
-                    <strong>{{ t('common.warning') }}：</strong> {{ record.impact.updated.join('、') }}
-                  </div>
-                  <div v-if="record.impact?.removed && record.impact.removed.length > 0" class="diff-line">
-                    <strong>{{ t('common.error') }}：</strong> {{ record.impact.removed.join('、') }}
-                  </div>
-                  <div class="diff-line" v-if="record.counts?.skippedOps">
-                    <strong>{{ t('message.skipped', { count: '' }) }}：</strong> {{ record.counts.skippedOps }}
-                  </div>
-                </div>
+        <section class="grid">
+          <div class="panel editor-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">{{ t('editor.json_title') }}</p>
+                <h2>{{ t('editor.json_subtitle') }}</h2>
               </div>
-              <div v-if="patchHistory.length === 0" class="history-empty">
-                {{ t('history.empty') }}
+              <div class="actions">
+                <NDropdown :options="schemaMenuOptions" trigger="click" @select="handleSchemaMenuSelect">
+                  <NButton size="tiny" quaternary type="primary" class="schema-action-btn">
+                    {{ t('common.history') }}
+                    <span style="margin-left: 4px; font-size: 10px;">▼</span>
+                  </NButton>
+                </NDropdown>
+                <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileSelect" />
               </div>
             </div>
-          </NSpin>
-        </NDrawerContent>
-      </NDrawer>
+            <div class="editor-container">
+              <Codemirror
+                v-model="schemaText"
+                :placeholder="t('editor.placeholder')"
+                :style="{ height: '100%' }"
+                :autofocus="true"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :extensions="editorExtensions"
+              />
+            </div>
+            <NAlert v-if="parseError" type="error" class="alert">
+              {{ t('editor.parse_error') }}{{ parseError }}
+            </NAlert>
+          </div>
 
-    </main>
+          <div class="panel form-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">{{ t('editor.preview_title') }}</p>
+                <h2 class="text-overflow-ellipsis">{{ schema?.title || t('common.title') }}</h2>
+              </div>
+              <span class="hint">{{ t('editor.preview_subtitle') }}</span>
+            </div>
+            <div class="form-body">
+              <FormRenderer v-if="schema" :schema="schema" :selected-field-key="selectedFieldKey"
+                :highlight-map="highlightMap" @select-field="openFieldEditor" />
+              <p v-else class="placeholder">{{ t('editor.placeholder') }}</p>
+            </div>
+          </div>
+        </section>
+
+        <FieldEditor v-if="schema && selectedFieldKey" :show="showFieldEditor" :schema="schema"
+          :field-key="selectedFieldKey" :backup-field="backupField" @update:show="(val) => (showFieldEditor = val)"
+          @update-schema="handleUpdateSchema" @confirm="onConfirm" @cancel="onCancel" @reset="onReset" />
+        <!-- Patch 操作决策预览 Modal -->
+        <PatchPreviewModal :show="isPatchModalOpen" :patch="pendingPatch" :schema="schema" :validation="pendingPatch?.validation"
+          @update:show="(val) => (isPatchModalOpen = val)" @confirm="confirmPatch" @cancel="cancelPatch" />
+
+        <!-- 版本冲突对话框（组件化，便于样式定制，与 PatchPreviewModal 保持一致的组件模式） -->
+        <VersionMismatchDialog :show="showVersionMismatchDialog" :info="versionMismatchInfo"
+          @update:show="(val) => (showVersionMismatchDialog = val)" />
+
+        <!-- Patch History Drawer -->
+        <NDrawer :show="showHistoryDrawer" :width="400" placement="right"
+          @update:show="(val) => (showHistoryDrawer = val)">
+          <NDrawerContent :title="t('history.title')">
+            <NSpin :show="isLoadingHistory">
+              <div class="history-drawer-content">
+                <div v-for="(record, index) in patchHistory" :key="record.id" class="history-item"
+                  :class="{ 'history-item--latest': index === 0 }">
+                  <div class="history-item-header">
+                    <span class="history-item-summary">{{ record.summary }}</span>
+                    <span class="history-item-time">{{ formatTime(record.timestamp) }}</span>
+                  </div>
+                  <div class="history-item-meta">
+                    <div class="meta-tags">
+                      <NTag size="small" type="info" style="margin-right:6px">{{ record.source || 'AI' }}</NTag>
+                      <NTag size="small" type="default" style="margin-right:6px">v{{ record.baseVersion ?? 0 }} → v{{ record.toVersion ?? 0 }}</NTag>
+                      <NTag size="small" type="success" style="margin-right:6px">{{ t('patch.status.add', { name: record.counts?.added ?? record.impact?.added?.length ?? 0 }) }}</NTag>
+                      <NTag size="small" type="warning" style="margin-right:6px">{{ t('patch.status.update', { name: record.counts?.updated ?? record.impact?.updated?.length ?? 0, props: '' }) }}</NTag>
+                      <NTag size="small" type="error">{{ t('patch.status.remove', { name: record.counts?.removed ?? record.impact?.removed?.length ?? 0 }) }}</NTag>
+                    </div>
+                    <div class="meta-actions" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                      <NButton size="tiny" tertiary @click="toggleRecord(record.id)">{{ isExpanded(record.id) ? t('common.cancel') : t('common.example') }}</NButton>
+                      <NButton size="tiny" quaternary :type="showDiffId === record.id ? 'primary' : 'default'" @click="showDiffId = showDiffId === record.id ? null : record.id">
+                        {{ showDiffId === record.id ? t('common.cancel') : 'Diff' }}
+                      </NButton>
+                      <NButton size="small" quaternary type="primary" class="history-item-rollback" @click="rollbackTo(record)">
+                        <div style="color: #fff;">{{ t('history.rollback') }}</div>
+                      </NButton>
+                    </div>
+                  </div>
+
+                  <!-- Visual Diff 视图 -->
+                  <div v-if="showDiffId === record.id" class="history-diff-viewer">
+                    <Diff 
+                      mode="unified" 
+                      :old-content="JSON.stringify(record.beforeSchema || {}, null, 2)" 
+                      :new-content="JSON.stringify(record.afterSchema || {}, null, 2)" 
+                      language="json"
+                      :theme="isDark ? 'dark' : 'light'"
+                    />
+                  </div>
+
+                  <div v-show="isExpanded(record.id)" class="history-item-details" style="margin-top:8px; font-size:13px; color:#475569;">
+                    <div v-if="record.impact?.added && record.impact.added.length > 0" class="diff-line">
+                      <strong>{{ t('common.success') }}：</strong> {{ record.impact.added.join('、') }}
+                    </div>
+                    <div v-if="record.impact?.updated && record.impact.updated.length > 0" class="diff-line">
+                      <strong>{{ t('common.warning') }}：</strong> {{ record.impact.updated.join('、') }}
+                    </div>
+                    <div v-if="record.impact?.removed && record.impact.removed.length > 0" class="diff-line">
+                      <strong>{{ t('common.error') }}：</strong> {{ record.impact.removed.join('、') }}
+                    </div>
+                    <div class="diff-line" v-if="record.counts?.skippedOps">
+                      <strong>{{ t('message.skipped', { count: '' }) }}：</strong> {{ record.counts.skippedOps }}
+                    </div>
+                  </div>
+                </div>
+                <div v-if="patchHistory.length === 0" class="history-empty">
+                  {{ t('history.empty') }}
+                </div>
+              </div>
+            </NSpin>
+          </NDrawerContent>
+        </NDrawer>
+      <!-- </main>
+    </router-view> -->
+      </main>
   </NConfigProvider>
 </template>
 
