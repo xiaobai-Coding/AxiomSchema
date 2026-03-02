@@ -71,6 +71,11 @@ Most AI form builders stop at "Generate once," "Screenshot and done," or "Regene
 - **Language-Aware AI**: AI logic detects user locale and generates `labels` and `reasoning` in the matching language.
 - **Seamless Switching**: Switch between English and Chinese with instant UI and AI logic updates.
 
+#### 10. Hybrid Auth & Storage (New)
+- **Frictionless Start**: No login required. Anonymous users enjoy a seamless experience with history saved to **LocalStorage**.
+- **Cloud Sync**: Sign in via **Clerk** to unlock cloud storage and higher rate limits.
+- **Smart Rate Limiting**: Anonymous users are subject to strict IP-based limits (e.g., 5 reqs/hour). When exhausted, a "Trial Ended" dialog gracefully guides users to sign in.
+
 ### 🔄 System Workflow
 
 The system follows a rigorous "Reasoning -> Validation -> Execution" pipeline:
@@ -240,6 +245,11 @@ Focusing on LLM applications, Agent systems, and AI front-end engineering practi
 #### 9. 全栈国际化
 - **语言感知 AI**：AI 自动识别环境语言，生成的摘要与推理过程与 UI 保持一致。
 - **无缝切换**：中英文一键切换，实时更新 UI 与 AI 逻辑。
+
+#### 10. 混合认证与存储策略 (New)
+- **无摩擦启动**：未登录用户可直接使用，操作历史自动保存至 **LocalStorage**。
+- **云端同步**：登录（**Clerk** 集成）后解锁云端存储与更高的频率限制。
+- **智能限流**：匿名用户受严格 IP 限流（如 5次/小时），耗尽时弹出“试用结束”提示并引导登录，实现无缝转化。
 
 ### 🔄 系统工作流程
 
